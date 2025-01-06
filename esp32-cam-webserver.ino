@@ -1,3 +1,4 @@
+#include <dummy.h>
 
 #include "src/app_config.h"     // global definitions
 #include "src/storage.h"        // Filesystem
@@ -6,6 +7,10 @@
 #include "src/app_httpd.h"      // Web server
 #include "src/camera_pins.h"    // Pin Mappings
 
+#include "esp_task_wdt.h"
+#include "soc/periph_defs.h"
+#include "esp_private/periph_ctrl.h"
+#include "freertos/timers.h"
 /* 
  * This sketch is a extension/expansion/rework of the ESP32 Camera webserer example.
  * 
@@ -177,7 +182,11 @@ void flashLED(int flashtime) {
 }
 
 void scheduleReboot(int delay) {
-    esp_task_wdt_init(delay,true);
+    esp_task_wdt_config_t wdt_config = {
+      .timeout_ms = delay, // Timeout in milliseconds
+      .trigger_panic = true, // Trigger a panic when the timeout is reached
+    };
+    esp_task_wdt_init(&wdt_config);  // schedule a a watchdog panic event for 3 seconds in the future
     esp_task_wdt_add(NULL);
 }
 
@@ -188,4 +197,3 @@ void resetI2CBus() {
     periph_module_reset(PERIPH_I2C0_MODULE);
     periph_module_reset(PERIPH_I2C1_MODULE);
 }
-

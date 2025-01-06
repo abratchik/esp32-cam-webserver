@@ -4,8 +4,8 @@
 #define CAM_DUMP_BUFFER_SIZE   1024
 
 #include <esp_camera.h>
-#include <esp_int_wdt.h>
-#include <esp_task_wdt.h>
+#include <esp_private/esp_int_wdt.h>
+#include <esp_private/esp_task_wdt.h>
 
 #include "app_component.h"
 #include "camera_pins.h"

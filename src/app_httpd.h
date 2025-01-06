@@ -1,8 +1,8 @@
 #ifndef app_httpd_h
 #define app_httpd_h
 
-#include <esp_int_wdt.h>
-#include <esp_task_wdt.h>
+#include <esp_private/esp_int_wdt.h>
+#include <esp_private/esp_task_wdt.h>
 #include <freertos/timers.h>
 
 #include "esp32pwm.h"

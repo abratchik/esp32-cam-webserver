@@ -44,13 +44,13 @@ ESP32PWM::ESP32PWM() {
 
 ESP32PWM::~ESP32PWM() {
 	if (attached()) {
-		ledcDetachPin(pin);
+		ledcDetach(pin);
 	}
 	deallocate();
 }
 
 double ESP32PWM::_ledcSetupTimerFreq(uint8_t chan, double freq, uint8_t bit_num) {
-	return ledcSetup(chan, freq, bit_num);
+	return ledcAttach(chan, freq, bit_num);
 }
 
 int ESP32PWM::timerAndIndexToChannel(int timerNum, int index) {
@@ -142,12 +142,11 @@ double ESP32PWM::setup(double freq, uint8_t resolution_bits) {
 
 	resolutionBits = resolution_bits;
 	if (attached()) {
-		ledcDetachPin(pin);
-		double val = ledcSetup(getChannel(), freq, resolution_bits);
-		attachPin(pin);
+		ledcDetach(pin);
+		double val = ledcAttach(pin, freq, resolution_bits);
 		return val;
 	}
-	return ledcSetup(getChannel(), freq, resolution_bits);
+	return ledcAttach(pin, freq, resolution_bits);
 }
 double ESP32PWM::getDutyScaled() {
 	return mapf((double) myDuty, 0, (double) ((1 << resolutionBits) - 1), 0.0,
@@ -171,13 +170,13 @@ void ESP32PWM::adjustFrequencyLocal(double freq, double dutyScaled) {
 	timerFreqSet[getTimer()] = (long) freq;
 	myFreq = freq;
 	if (attached()) {
-		ledcDetachPin(pin);
+		ledcDetach(pin);
 		// Remove the PWM during frequency adjust
-		_ledcSetupTimerFreq(getChannel(), freq, resolutionBits);
+		ledcAttach(getChannel(), freq, resolutionBits);
 		writeScaled(dutyScaled);
-		ledcAttachPin(pin, getChannel()); // re-attach the pin after frequency adjust
+		//ledcAttach(pin, getChannel()); // re-attach the pin after frequency adjust
 	} else {
-		_ledcSetupTimerFreq(getChannel(), freq, resolutionBits);
+		ledcAttach(getChannel(), freq, resolutionBits);
 		writeScaled(dutyScaled);
 	}
 }
@@ -209,7 +208,7 @@ void ESP32PWM::attachPin(uint8_t pin) {
 
 	if (hasPwm(pin)) {
 		attach(pin);
-		ledcAttachPin(pin, getChannel());
+		//ledcAttach(pin, getChannel());
 	} else {
 		Serial.println(
 				"ERROR PWM channel unavailable on pin requested! " + String(pin)
@@ -230,7 +229,7 @@ void ESP32PWM::attachPin(uint8_t pin, double freq, uint8_t resolution_bits) {
 	attachPin(pin);
 }
 void ESP32PWM::detachPin(int pin) {
-	ledcDetachPin(pin);
+	ledcDetach(pin);
 	deallocate();
 }
 /* Side effects of frequency changes happen because of shared timers

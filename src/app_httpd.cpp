@@ -1,5 +1,11 @@
+#include "freertos/FreeRTOS.h"
 #include "app_httpd.h"
 
+#include "soc/periph_defs.h"
+#include "soc/periph_defs.h"
+#include "esp_private/periph_ctrl.h"
+#include "esp_private/esp_int_wdt.h"
+#include "esp_task_wdt.h"
 CLAppHttpd::CLAppHttpd() {
     // Gather static values used when dumping status; these are slow functions, so just do them once during startup
     sketchSize = ESP.getSketchSize();;
@@ -373,7 +379,11 @@ void onControl(AsyncWebServerRequest *request) {
         request->send(200);
         if (AppHttpd.getLamp() != -1) AppHttpd.setLamp(0); // kill the lamp; otherwise it can remain on during the soft-reboot
         Storage.getFS().end();      // close file storage
-        esp_task_wdt_init(3,true);  // schedule a a watchdog panic event for 3 seconds in the future
+        esp_task_wdt_config_t wdt_config = {
+          .timeout_ms = 3000, // Timeout in milliseconds
+          .trigger_panic = true, // Trigger a panic when the timeout is reached
+        };
+        esp_task_wdt_init(&wdt_config);  // schedule a a watchdog panic event for 3 seconds in the future
         esp_task_wdt_add(NULL);
         periph_module_disable(PERIPH_I2C0_MODULE); // try to shut I2C down properly
         periph_module_disable(PERIPH_I2C1_MODULE);
