@@ -1,20 +1,87 @@
 
-#include "src/app_config.h"     // global definitions
-#include "src/storage.h"        // Filesystem
-#include "src/app_conn.h"       // Conectivity 
-#include "src/app_cam.h"        // Camera 
-#include "src/app_httpd.h"      // Web server
-#include "src/camera_pins.h"    // Pin Mappings
+#include <app_config.h>     // global definitions
+#include <storage.h>        // Filesystem
+#include <app_conn.h>       // Conectivity 
+#include <app_cam.h>        // Camera 
+#include <app_httpd.h>      // Web server
+#include <camera_pins.h>    // Pin Mappings
 
 /* 
  * This sketch is a extension/expansion/rework of the ESP32 Camera webserer example.
  * 
  */
 
+// Flash LED if LED pin defined
+void flashLED(int flashtime) {
+#ifdef LED_PIN
+    digitalWrite(LED_PIN, LED_ON);
+    delay(flashtime);
+    digitalWrite(LED_PIN, LED_OFF);
+#endif
+}
+
+// @brief tries to initialize the filesystem until success, otherwise loops indefinitely
+void filesystemStart() {
+  Serial.println("Starting filesystem");
+  while ( !Storage.init() ) {
+    // if we sit in this loop something is wrong;
+    Serial.println("Filesystem mount failed");
+    for (int i=0; i<10; i++) {
+      flashLED(100); // Show filesystem failure
+      delay(100);
+    }
+    delay(1000);
+    Serial.println("Retrying..");
+  }
+  
+  // Storage.listDir("/", 0);
+}
+
+// Serial input 
+void handleSerial() {
+    if(Serial.available()) {
+        char cmd = Serial.read();
+
+        // Rceiving commands and data from serial. Any input, which doesnt start from '#' is ignored.
+        if (cmd == '#' ) {
+            String rsp = Serial.readStringUntil('\n');
+            rsp.trim();
+            snprintf(AppHttpd.getSerialBuffer(), SERIAL_BUFFER_SIZE, rsp.c_str());
+        }
+    }
+}
+
+void notifyConnect() {
+    for (int i = 0; i < 5; i++) {
+        flashLED(150);
+        delay(50);
+    }
+    AppHttpd.serialSendCommand("Connected");
+}
+
+void notifyDisconnect() {
+    AppHttpd.serialSendCommand("Disconnected");
+}
+
+void scheduleReboot(int delay) {
+    esp_task_wdt_init(delay,true);
+    esp_task_wdt_add(NULL);
+}
+
+// Reset the I2C bus.. may help when rebooting.
+void resetI2CBus() {
+    periph_module_disable(PERIPH_I2C0_MODULE); // try to shut I2C down properly in case that is the problem
+    periph_module_disable(PERIPH_I2C1_MODULE);
+    periph_module_reset(PERIPH_I2C0_MODULE);
+    periph_module_reset(PERIPH_I2C1_MODULE);
+}
 
 void setup() {
     Serial.begin(115200);
     Serial.setDebugOutput(true);
+
+    Serial.println("Start ESP32 Cam Webserver");
+    Serial.println("Initialize....");
 
     // Warn if no PSRAM is detected (typically user error with board selection in the IDE)
     if(!psramFound()){
@@ -121,71 +188,5 @@ void loop() {
             
         }
     }
-}
-
-
-/// @brief tries to initialize the filesystem until success, otherwise loops indefinitely
-void filesystemStart(){
-  Serial.println("Starting filesystem");
-  while ( !Storage.init() ) {
-    // if we sit in this loop something is wrong;
-    Serial.println("Filesystem mount failed");
-    for (int i=0; i<10; i++) {
-      flashLED(100); // Show filesystem failure
-      delay(100);
-    }
-    delay(1000);
-    Serial.println("Retrying..");
-  }
-  
-  // Storage.listDir("/", 0);
-}
-
-// Serial input 
-void handleSerial() {
-    if(Serial.available()) {
-        char cmd = Serial.read();
-
-        // Rceiving commands and data from serial. Any input, which doesnt start from '#' is ignored.
-        if (cmd == '#' ) {
-            String rsp = Serial.readStringUntil('\n');
-            rsp.trim();
-            snprintf(AppHttpd.getSerialBuffer(), SERIAL_BUFFER_SIZE, rsp.c_str());
-        }
-    }
-}
-
-void notifyConnect() {
-    for (int i = 0; i < 5; i++) {
-        flashLED(150);
-        delay(50);
-    }
-    AppHttpd.serialSendCommand("Connected");
-}
-
-void notifyDisconnect() {
-    AppHttpd.serialSendCommand("Disconnected");
-}
-
-// Flash LED if LED pin defined
-void flashLED(int flashtime) {
-#ifdef LED_PIN
-    digitalWrite(LED_PIN, LED_ON);
-    delay(flashtime);
-    digitalWrite(LED_PIN, LED_OFF);
-#endif
-}
-
-void scheduleReboot(int delay) {
-    esp_task_wdt_init(delay,true);
-    esp_task_wdt_add(NULL);
-}
-
-// Reset the I2C bus.. may help when rebooting.
-void resetI2CBus() {
-    periph_module_disable(PERIPH_I2C0_MODULE); // try to shut I2C down properly in case that is the problem
-    periph_module_disable(PERIPH_I2C1_MODULE);
-    periph_module_reset(PERIPH_I2C0_MODULE);
-    periph_module_reset(PERIPH_I2C1_MODULE);
 }
 

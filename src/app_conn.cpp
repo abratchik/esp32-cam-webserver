@@ -6,13 +6,15 @@ CLAppConn::CLAppConn() {
 
 int CLAppConn::start() {
 
+    stationList = new Station[MAX_KNOWN_STATIONS];
+
     if(loadPrefs() != OK) {
         return WiFi.status();
     }
     
     Serial.println("Starting WiFi");
 
-    WiFi.setHostname(mdnsName);
+    WiFi.setHostname(this->mdnsName.c_str());
     
     WiFi.mode(WIFI_STA); 
 
@@ -46,8 +48,8 @@ int CLAppConn::start() {
                     Serial.printf("%3i : [%s] %s (%i)", i + 1, thisBSSID.c_str(), thisSSID.c_str(), thisRSSI);
                     // Scan our list of known external stations
                     for (int sta = 0; sta < stationCount; sta++) {
-                        if ((strcmp(stationList[sta]->ssid, thisSSID.c_str()) == 0) ||
-                        (strcmp(stationList[sta]->ssid, thisBSSID.c_str()) == 0)) {
+                        if (stationList[sta].ssid == thisSSID ||
+                        stationList[sta].ssid == thisBSSID) {
                             Serial.print("  -  Known!");
                             // Chose the strongest RSSI seen
                             if (thisRSSI > bestRSSI) {
@@ -89,7 +91,8 @@ int CLAppConn::start() {
             // WiFi.setHostname(mdnsName);
 
             // Initiate network connection request (3rd argument, channel = 0 is 'auto')
-            WiFi.begin(bestSSID, stationList[bestStation]->password, 0, bestBSSID);
+            //WiFi.begin(bestBSSID, stationList[bestStation]->password.c_str(), 0, bestBSSID);
+            WiFi.begin(stationList[bestStation].ssid.c_str(), stationList[bestStation].password.c_str());
 
             // Wait to connect, or timeout
             unsigned long start = millis();
@@ -100,7 +103,7 @@ int CLAppConn::start() {
             // If we have connected, inform user
             if (WiFi.status() == WL_CONNECTED) {
                 setSSID(WiFi.SSID().c_str());
-                setPassword(stationList[bestStation]->password);
+                setPassword(stationList[bestStation].password);
                 Serial.println();
                 // Print IP details
                 Serial.printf("IP address: %s\r\n",WiFi.localIP().toString());
@@ -117,7 +120,7 @@ int CLAppConn::start() {
 
     if (accesspoint && (WiFi.status() != WL_CONNECTED)) {
         // The accesspoint has been enabled, and we have not connected to any existing networks
-        WiFi.softAPsetHostname(mdnsName);
+        WiFi.softAPsetHostname(this->mdnsName.c_str());
         
         WiFi.mode(WIFI_AP);
         // reset ap_status
@@ -142,7 +145,7 @@ int CLAppConn::start() {
 
         // WiFi.softAPsetHostname(mdnsName);
 
-        if(!WiFi.softAP(apName, apPass, ap_channel)) {
+        if(!WiFi.softAP(this->apName.c_str(), this->apPass.c_str(), this->ap_channel)) {
             Serial.println("Access Point init failed!");
             ap_status = WL_CONNECT_FAILED;
             return wifiStatus();
@@ -169,22 +172,29 @@ int CLAppConn::start() {
 }
 
 void CLAppConn::calcURLs() {
+    char s[100] = {0}; 
+    memset(s, 0, sizeof(s));
+
     // Set the URL's
 
     // if host name is not defined or access point mode is activated, use local IP for url
-    if(!strcmp(hostName, "")) {
+    if(this->hostName != "") {
         if(accesspoint)
-            strcpy(hostName, WiFi.softAPIP().toString().c_str());
+            this-> hostName = WiFi.softAPIP().toString();
         else
-            strcpy(hostName, WiFi.localIP().toString().c_str());
+            this-> hostName = WiFi.localIP().toString();
     }
     if (httpPort != 80) {
-        snprintf(httpURL, sizeof(httpURL), "http://%s:%d/", hostName, httpPort);
-        snprintf(streamURL, sizeof(streamURL), "http://%s:%d/view?mode=stream", hostName, httpPort);
+        snprintf(s, sizeof(s), "http://%s:%d/", hostName, httpPort);
+        this->httpURL = s;
+        snprintf(s, sizeof(s), "http://%s:%d/view?mode=stream", hostName, httpPort);
+        this->streamURL = s;
 
     } else {
-        snprintf(httpURL, sizeof(httpURL), "http://%s/", hostName);
-        snprintf(streamURL, sizeof(streamURL), "http://%s/view?mode=stream", hostName);
+        snprintf(s, sizeof(s), "http://%s/", hostName);
+        this->httpURL = s;
+        snprintf(s, sizeof(s), "http://%s/view?mode=stream", hostName);
+        this->streamURL = s;
     }
     
 
@@ -192,21 +202,20 @@ void CLAppConn::calcURLs() {
 
 int CLAppConn::loadPrefs() {
     
-    jparse_ctx_t jctx;
-    int ret  = parsePrefs(&jctx);
+    JsonDocument json;
+    int ret  = parsePrefs(json);
     if(ret != OS_SUCCESS) {
         return ret;
     }
 
-    ret = json_obj_get_string(&jctx, (char*)"mdns_name", mdnsName, sizeof(mdnsName));
+    this->mdnsName = json["mdns_name"].as<String>();
 
-    if(ret != OS_SUCCESS)
+    if(this->mdnsName) {
+        this->hostName  = json["host_name"].as<String>();
+        this->httpPort  = json["http_port"].as<int>();
+        this->dhcp      = json["dhcp"].as<bool>();
+    } else {
         Serial.println("MDNS Name is not defined!");
-
-    if(ret == OS_SUCCESS) {
-        json_obj_get_string(&jctx, (char*)"host_name", hostName, sizeof(hostName));
-        json_obj_get_int(&jctx, (char*)"http_port", &httpPort);
-        json_obj_get_bool(&jctx, (char*)"dhcp", &dhcp);
     }
 
     char sbuf[64];
@@ -214,80 +223,74 @@ int CLAppConn::loadPrefs() {
     int count;
     stationCount = 0;
 
-    if (ret == OS_SUCCESS && json_obj_get_array(&jctx, (char*)"stations", &count) == OS_SUCCESS) {
+    if (this->mdnsName && json["stations"]) {
         Serial.print("Known external SSIDs: ");
-        if(count>0)
+        count = json["stations"].as<JsonArray>().size();
+        if(count > 0)
             for(int i=0; i < count && i < MAX_KNOWN_STATIONS; i++) {
 
-                if(json_arr_get_object(&jctx, i) == OS_SUCCESS) {
-                    if(json_obj_get_string(&jctx, (char*)"ssid", sbuf, sizeof(sbuf)) == OS_SUCCESS &&
-                       json_obj_get_string(&jctx, (char*)"pass", dbuf, sizeof(dbuf)) == OS_SUCCESS && 
-                       strcmp(sbuf, "") != 0) {
-                        Station *s = (Station*) malloc(sizeof(Station));
-                        snprintf(s->ssid, sizeof(s->ssid), sbuf);
-                        urlDecode(s->password, dbuf, sizeof(dbuf));
-                        Serial.println(s->ssid);
+                if(json["stations"].as<JsonArray>()[i]) {
+                    if(json["stations"].as<JsonArray>()[i]["ssid"] &&
+                       json["stations"].as<JsonArray>()[i]["pass"] ) {
+                        Station s;
+                        s.ssid = json["stations"].as<JsonArray>()[i]["ssid"].as<String>();
+                        this->urlDecode(s.password, json["stations"].as<JsonArray>()[i]["pass"].as<String>().c_str());
+                        Serial.println(s.ssid);
                         stationList[i] = s;
                         stationCount++;
                     } 
-                    json_arr_leave_object(&jctx);
                 }
                 
             }
         else
             Serial.println("None");
-        json_obj_leave_array(&jctx);
     }
         
     // read static IP
-    if(ret == OS_SUCCESS && json_obj_get_object(&jctx, (char*)"static_ip") == OS_SUCCESS) {
-        readIPFromJSON(&jctx, &staticIP.ip, (char*)"ip");
-        readIPFromJSON(&jctx, &staticIP.netmask, (char*)"netmask");
-        readIPFromJSON(&jctx, &staticIP.gateway, (char*)"gateway");
-        readIPFromJSON(&jctx, &staticIP.dns1, (char*)"dns1");
-        readIPFromJSON(&jctx, &staticIP.dns2, (char*)"dns2");
-        json_obj_leave_object(&jctx);
+    if(this->mdnsName && json["static_ip"]) {
+        staticIP.ip->fromString(json["static_ip"]["ip"].as<String>());
+        staticIP.netmask->fromString(json["static_ip"]["netmask"].as<String>());
+        staticIP.gateway->fromString(json["static_ip"]["gateway"].as<String>());
+        staticIP.dns1->fromString(json["static_ip"]["dns1"].as<String>());
+        staticIP.dns2->fromString(json["static_ip"]["dns2"].as<String>());
     }
 
-    json_obj_get_bool(&jctx, (char*)"accesspoint", &load_as_ap);
-    json_obj_get_string(&jctx, (char*)"ap_ssid", apName, sizeof(apName));
-    json_obj_get_string(&jctx, (char*)"ap_pass", dbuf, sizeof(dbuf));
-    urlDecode(apPass, dbuf, sizeof(dbuf));
-    if(json_obj_get_int(&jctx, (char*)"ap_channel", &ap_channel) != OS_SUCCESS)
-        ap_channel = 1;
-    if(json_obj_get_bool(&jctx, (char*)"ap_dhcp", &ap_dhcp) != OS_SUCCESS)
-        ap_dhcp = true;
+    load_as_ap = json["accesspoint"].as<bool>();
+    this->apName = json["ap_ssid"].as<String>().c_str();
+
+    String apPassStr = json["ap_pass"].as<String>();
+    this->urlDecode(this->apPass, json["ap_pass"].as<String>().c_str());
+
+    if(json["ap_channel"]) { this->ap_channel = json["ap_channel"].as<int>(); } else { ap_channel = 1; }
+    if(json["ap_dhcp"]) { this->ap_dhcp = json["ap_dhcp"].as<bool>(); } else { ap_dhcp = true; }
     
     // read AP IP
-    if(ret == OS_SUCCESS && json_obj_get_object(&jctx, (char*)"ap_ip") == OS_SUCCESS) {
-        readIPFromJSON(&jctx, &apIP.ip, (char*)"ip");
-        readIPFromJSON(&jctx, &apIP.netmask, (char*)"netmask");
-        json_obj_leave_object(&jctx);
+    if(this->mdnsName && json["ap_ip"]) {
+        
+        IPAddress ip;
+        ip.fromString(json["ap_ip"]["ip"].as<String>());
+        apIP.ip = &ip;
+        
+        IPAddress nm;
+        nm.fromString(json["ap_ip"]["netmask"].as<String>());
+        apIP.netmask = &nm;
     }
     
     // User name and password
-    json_obj_get_string(&jctx, (char*)"user", user, sizeof(user));
-    json_obj_get_string(&jctx, (char*)"pwd", pwd, sizeof(pwd));
+    this->user = json["user"].as<String>();
+    this->pwd = json["pwd"].as<String>();
 
     // OTA
-    json_obj_get_bool(&jctx, (char*)"ota_enabled", &otaEnabled);   
-    json_obj_get_string(&jctx, (char*)"ota_password", dbuf, sizeof(dbuf)); 
-    urlDecode(otaPassword, dbuf, sizeof(dbuf));
+    this->otaEnabled = json["ota_enabled"].as<bool>();
+    this->urlDecode(this->otaPassword, json["ota_password"].as<String>().c_str());
 
     // NTP
-    json_obj_get_string(&jctx, (char*)"ntp_server", ntpServer, sizeof(ntpServer)); 
-    int64_t gmtOffset;
-    if(json_obj_get_int64(&jctx, (char*)"gmt_offset", &gmtOffset) == OS_SUCCESS) {
-        gmtOffset_sec = (long) gmtOffset;
-    }
-    json_obj_get_int(&jctx, (char*)"dst_offset", &daylightOffset_sec);
-
-    bool dbg;
-    if(json_obj_get_bool(&jctx, (char*)"debug_mode", &dbg) == OS_SUCCESS)
-        setDebugMode(dbg);    
-
-    // close the file
-    json_parse_end(&jctx);
+    this->ntpServer = json["ntp_server"].as<String>(); 
+    this->gmtOffset_sec = json["gmt_offset"].as<int64_t>();
+    this->daylightOffset_sec = json["dst_offset"].as<int>();
+    
+    this->setDebugMode(json["debug_mode"].as<bool>());
+    
     return ret;
 }
 
@@ -306,102 +309,98 @@ void CLAppConn::readIPFromJSON (jparse_ctx_t * context, IPAddress ** ip_address,
 }
 
 int CLAppConn::savePrefs() {
+  JsonDocument json;
+  char ebuf[254]; 
 
-    char * prefs_file = getPrefsFileName(true); 
+  char * prefs_file = getPrefsFileName(true); 
 
-    if (Storage.exists(prefs_file)) {
-        Serial.printf("Updating %s\r\n", prefs_file);
-    } else {
-        Serial.printf("Creating %s\r\n", prefs_file);
+  if (Storage.exists(prefs_file)) {
+    Serial.printf("Updating %s\r\n", prefs_file);
+  } else {
+    Serial.printf("Creating %s\r\n", prefs_file);
+  }
+
+  json["mdns_name"] = this->mdnsName;
+
+  int count = stationCount;
+  int index = getSSIDIndex();
+  if(index < 0 && count == MAX_KNOWN_STATIONS) {
+    count--;
+  }
+
+  if(index < 0 || count > 0) {
+    json["stations"].to<JsonArray>();
+    uint8_t i=0;
+    if(index < 0 && this->ssid != "") {
+      json["stations"][i]["ssid"] = this->ssid;
+      this->urlEncode(this->password, json["stations"][i]["pass"].as<String>().c_str());
+      i++;
     }
 
-    char buf[1024];
-    json_gen_str_t jstr;
-    json_gen_str_start(&jstr, buf, sizeof(buf), NULL, NULL);
-    json_gen_start_object(&jstr);
-    json_gen_obj_set_string(&jstr, "mdns_name", mdnsName);
-
-    int count = stationCount;
-    int index = getSSIDIndex();
-    if(index < 0 && count == MAX_KNOWN_STATIONS) {
-        count--;
+    for(int i=0; i < count; i++) {
+      json["stations"][i]["ssid"] = stationList[i].ssid;
+      
+      if(index >= 0 && i == index) {
+        String encString("");
+        this->urlEncode(encString, this->password.c_str());
+        json["stations"][i]["pass"] = encString;
+      }
+      else {
+        String encString("");
+        this->urlEncode(encString, stationList[i].password.c_str());
+        json["stations"][i]["pass"] = encString;
+      }
     }
+  }
 
-    char ebuf[254]; 
+  json["dhcp"] = this->dhcp;
+  json["static_ip"].to<JsonObject>();
+  if(staticIP.ip) json["static_ip"]["ip"] = staticIP.ip->toString();
+  if (staticIP.netmask) json["static_ip"]["netmask"] = staticIP.netmask->toString();
+  if (staticIP.gateway) json["static_ip"]["gateway"] = staticIP.gateway->toString();
+  if (staticIP.dns1) json["static_ip"]["dns1"] = staticIP.dns1->toString();
+  if (staticIP.dns2) json["static_ip"]["dns2"] = staticIP.dns2->toString();
 
-    if(index < 0 || count > 0) {
-        json_gen_push_array(&jstr, "stations");
-        if(index < 0 && strcmp(ssid, "") != 0) {
-            json_gen_start_object(&jstr);
-            json_gen_obj_set_string(&jstr, "ssid", ssid);
-            urlEncode(ebuf, password, sizeof(password));
-            json_gen_obj_set_string(&jstr, "pass", ebuf);
-            json_gen_end_object(&jstr);
-        }
- 
-        for(int i=0; i < count && stationList[i]; i++) {
-            json_gen_start_object(&jstr);
-            json_gen_obj_set_string(&jstr, "ssid", stationList[i]->ssid);
-            if(index >= 0 && i == index) {
-                urlEncode(ebuf, password, sizeof(password));
-                json_gen_obj_set_string(&jstr, "pass", ebuf);
-            }
-            else {
-                Serial.println(ebuf);
-                urlEncode(ebuf, stationList[i]->password, sizeof(stationList[i]->password));
-                json_gen_obj_set_string(&jstr, "pass", ebuf);
-            }
-            json_gen_end_object(&jstr);
-        }
-        json_gen_pop_array(&jstr);
-    }
-
-    json_gen_obj_set_bool(&jstr, "dhcp", dhcp);
-    json_gen_push_object(&jstr, "static_ip");
-    if(staticIP.ip) json_gen_obj_set_string(&jstr, "ip", staticIP.ip->toString().c_str());
-    if(staticIP.netmask) json_gen_obj_set_string(&jstr, "netmask", staticIP.netmask->toString().c_str());
-    if(staticIP.gateway) json_gen_obj_set_string(&jstr, "gateway", staticIP.gateway->toString().c_str());
-    if(staticIP.dns1) json_gen_obj_set_string(&jstr, "dns1", staticIP.dns1->toString().c_str());
-    if(staticIP.dns2) json_gen_obj_set_string(&jstr, "dns2", staticIP.dns2->toString().c_str());
-    json_gen_pop_object(&jstr);    
-    json_gen_obj_set_int(&jstr, "http_port", httpPort);
-    json_gen_obj_set_string(&jstr, (char*)"user", user);
-    json_gen_obj_set_string(&jstr, (char*)"pwd", pwd);
-    json_gen_obj_set_bool(&jstr, "ota_enabled", otaEnabled);
-    urlEncode(ebuf, otaPassword, sizeof(otaPassword));
-    json_gen_obj_set_string(&jstr, "ota_password", ebuf);
+  json["http_port"] = this->httpPort;
+  json["user"] = this->user;
+  json["pwd"] = this->pwd;
+  json["ota_enabled"] = this->otaEnabled;
+  
+  String t("");
+  this->urlEncode(t, this->otaPassword.c_str());
+  json["ota_password"] = t;
     
-    json_gen_obj_set_bool(&jstr, "accesspoint", load_as_ap);
-    json_gen_obj_set_string(&jstr, "ap_ssid", apName);
-    urlEncode(ebuf, apPass, sizeof(apPass));
-    json_gen_obj_set_string(&jstr, "ap_pass", ebuf);
-    json_gen_obj_set_bool(&jstr, "ap_dhcp", ap_dhcp);
-    json_gen_push_object(&jstr, "ap_ip");
-    if(apIP.ip) json_gen_obj_set_string(&jstr, "ip", apIP.ip->toString().c_str());
-    if(apIP.netmask) json_gen_obj_set_string(&jstr, "netmask", apIP.netmask->toString().c_str());
-    json_gen_pop_object(&jstr);
+  json["accesspoint"] = this->load_as_ap;
+  json["ap_ssid"] = this-> apName;
 
-    json_gen_obj_set_string(&jstr, "ntp_server", ntpServer);
-    json_gen_obj_set_int(&jstr, "gmt_offset", gmtOffset_sec);
-    json_gen_obj_set_int(&jstr, "dst_offset", daylightOffset_sec);
+  t = "";
+  this->urlEncode(t, this->otaPassword.c_str());
+  json["ap_pass"] = t;
+  
+  json["ap_dhcp"] = this->ap_dhcp;
+  if(apIP.ip)       json["ap_ip"]["ip"] = apIP.ip->toString();
+  if(apIP.netmask)  json["ap_ip"]["netmask"] = apIP.netmask->toString();
+    
+  json["ntp_server"] = this->ntpServer;
+  json["gmt_offset"] = this->gmtOffset_sec;
+  json["dst_offset"] = this->daylightOffset_sec;
+  json["debug_mode"] = this->isDebugMode();
 
-    json_gen_obj_set_bool(&jstr, "debug_mode", isDebugMode());
-    json_gen_end_object(&jstr);
-    json_gen_str_end(&jstr);
-
-    File file = Storage.open(prefs_file, FILE_WRITE);
-    if(file) {
-        file.print(buf);
-        file.close();
-        Serial.printf("File %s updated\r\n", prefs_file);
-        return OK;
-    }
-    else {
-        Serial.printf("Failed to save connection preferences to file %s\r\n", prefs_file);
-        return FAIL;
-    }
-    return OS_SUCCESS;
-}
+  File file = Storage.open(prefs_file, FILE_WRITE);
+  if(file) {
+    serializeJson(json, file);
+    file.close();
+    Serial.printf("File %s updated\r\n", prefs_file);
+    serializeJsonPretty(json, Serial);
+    Serial.println();
+    return OK;
+  }
+  else {
+    Serial.printf("Failed to save connection preferences to file %s\r\n", prefs_file);
+    return FAIL;
+  }
+  return OS_SUCCESS;
+} 
 
 void CLAppConn::startOTA() {
     // Set up OTA
@@ -411,11 +410,11 @@ void CLAppConn::startOTA() {
         // Port defaults to 3232
         // ArduinoOTA.setPort(3232);
         // Hostname defaults to esp3232-[MAC]
-        ArduinoOTA.setHostname(mdnsName);
+        ArduinoOTA.setHostname(this->mdnsName.c_str());
 
-        if (strlen(otaPassword) != 0) {
-            ArduinoOTA.setPassword(otaPassword);
-            Serial.printf("OTA Password: %s\n\r", otaPassword);
+        if (otaPassword.length() > 0) {
+            ArduinoOTA.setPassword(this->otaPassword.c_str());
+            Serial.printf("OTA Password: %s\n\r", this->otaPassword.c_str());
         } 
         else {
             Serial.printf("\r\nNo OTA password has been set! (insecure)\r\n\r\n");
@@ -466,20 +465,20 @@ void CLAppConn::startOTA() {
 void CLAppConn::configMDNS() {
 
     // if(!otaEnabled) {
-    if (!MDNS.begin(mdnsName)) {
+    if (!MDNS.begin(this->mdnsName.c_str())) {
         Serial.println("Error setting up MDNS responder!");
     }
     else
         Serial.println("mDNS responder started");
     // }
     //MDNS Config -- note that if OTA is NOT enabled this needs prior steps!
-    MDNS.addService("http", "tcp", httpPort);
+    MDNS.addService("http", "tcp", this->httpPort);
     Serial.println("Added HTTP service to MDNS server");
 
 }
 
 void CLAppConn::configNTP() {
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer.c_str());
 }
 
 void CLAppConn::printLocalTime(bool extraData) {
@@ -496,28 +495,33 @@ void CLAppConn::printLocalTime(bool extraData) {
 void CLAppConn::updateTimeStr() {
     if(!accesspoint) {
        tm timeinfo; 
-       if(getLocalTime(&timeinfo)) 
-            strftime(localTimeString, sizeof(localTimeString), "%H:%M:%S, %A, %B %d %Y", &timeinfo);
+       if(getLocalTime(&timeinfo)) {
+            char buffer[80];
+            strftime(buffer, sizeof(buffer), "%H:%M:%S, %A, %B %d %Y", &timeinfo);
+            this->localTimeString = (String)buffer;
+       }
     }
     else {
-        snprintf(localTimeString, sizeof(localTimeString), "N/A");
+        this->localTimeString = "N/A";
     }
     int64_t sec = esp_timer_get_time() / 1000000;
     int64_t upDays = int64_t(floor(sec/86400));
     int upHours = int64_t(floor(sec/3600)) % 24;
     int upMin = int64_t(floor(sec/60)) % 60;
     int upSec = sec % 60;
-    snprintf(upTimeString, sizeof(upTimeString),  "%" PRId64 ":%02i:%02i:%02i (d:h:m:s)", upDays, upHours, upMin, upSec);
+
+    char buffer[80];
+    snprintf(buffer, sizeof(buffer),  "%" PRId64 ":%02i:%02i:%02i (d:h:m:s)", upDays, upHours, upMin, upSec);
+    this->upTimeString = (String)buffer;
 }
 
 int CLAppConn::getSSIDIndex() {
-    for(int i=0; i < stationCount; i++) {
-        if(!stationList[i]) break;
-        if(strcmp(ssid, stationList[i]->ssid) == 0) {
-            return i;
-        }
+  for(int i=0; i < stationCount; i++) {
+    if(ssid == stationList[i].ssid) {
+      return i;
     }
-    return -1;
+  }
+  return -1;
 }
 
 CLAppConn AppConn;

@@ -3,6 +3,7 @@
 
 #include "json_generator.h"
 #include "json_parser.h"
+#include <ArduinoJson.h>
 
 #if __has_include("../myconfig.h")
 #include "../myconfig.h"
@@ -51,10 +52,15 @@ class CLAppComponent {
         int readJsonIntVal(jparse_ctx_t *jctx, const char* token);
 
         int parsePrefs(jparse_ctx_t *jctx);
+        int parsePrefs(JsonDocument& json);
 
         int urlDecode(char * decoded, char * source, size_t len); 
         int urlEncode(char * encoded, char * source, size_t len);
 
+        unsigned char hex2int(char c);
+        int urlDecode(String& decoded, const char* source); 
+        int urlEncode(String& encoded, const char* source);
+        
 
     private:
         // prefix for forming preference file name of this class

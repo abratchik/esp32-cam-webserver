@@ -4,7 +4,7 @@
     "user":"admin",
     "pwd":"admin",
     "ota_enabled":false,
-    "ota_password":"changeit!",
+    "ota_password":"changeit",
     "accesspoint":false,
     "ap_ssid":"esp32cam",
     "ap_pass":"123456789",

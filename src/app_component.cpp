@@ -54,6 +54,33 @@ int CLAppComponent::removePrefs() {
   return OS_SUCCESS;
 }
 
+int CLAppComponent::parsePrefs(JsonDocument& json) {
+  char* conn_file = getPrefsFileName();
+  
+  if (Storage.exists(conn_file)) {
+    //file exists, reading and loading
+    Serial.printf("Open config file %s \r\n", conn_file);
+    
+    File configFile = Storage.open(conn_file);
+    if (configFile) {
+      Serial.printf("Config file %s opened \r\n", conn_file);
+      
+      DeserializationError error = deserializeJson(json, configFile);
+      
+      if (!error) {
+        serializeJsonPretty(json, Serial);
+        Serial.println();
+        return OS_SUCCESS;
+      }
+    } else {
+      Serial.printf("Failed to open the connection settings from %s \r\n", conn_file);
+    }
+  } else {
+    Serial.printf("Preference file %s not exists.\r\n", conn_file);
+  }
+  return OS_FAIL;
+}
+
 int CLAppComponent::parsePrefs(jparse_ctx_t *jctx) {
   char *conn_file = getPrefsFileName(); 
 
@@ -75,7 +102,71 @@ int CLAppComponent::parsePrefs(jparse_ctx_t *jctx) {
   return ret;
 }
 
-int CLAppComponent::urlDecode(char * decoded, char * source, size_t len) {
+unsigned char CLAppComponent::hex2int(char c) {
+    if (c >= '0' && c <='9'){
+        return((unsigned char)c - '0');
+    }
+    if (c >= 'a' && c <='f'){
+        return((unsigned char)c - 'a' + 10);
+    }
+    if (c >= 'A' && c <='F'){
+        return((unsigned char)c - 'A' + 10);
+    }
+    return(0);
+}
+
+int CLAppComponent::urlDecode(String& decoded, const char* source) {
+  int len = strlen(source);
+  decoded.reserve(len);
+  for (int i = 0; i < len; i++) {
+    if (source[i] == '%') {
+      if (i + 2 < len) {
+        char hex[3] = { source[i + 1], source[i + 2], '\0' };
+        decoded += static_cast<char>(strtol(hex, nullptr, 16));
+        i += 2;
+      }
+    } else if (source[i] == '+') {
+      decoded += ' ';
+    } else {
+      decoded += source[i];
+    }
+  }
+  return OS_SUCCESS;
+}
+
+int CLAppComponent::urlEncode(String& encoded, const char* source) {
+  char c;
+  char code0;
+  char code1;
+  char code2;
+  for (int i = 0; i < strlen(source); i++){
+    c=source[i];
+    if (c == ' '){
+        encoded += '+';
+    } else if (isalnum(c)){
+        encoded +=c;
+    } else{
+        code1=(c & 0xf)+'0';
+        if ((c & 0xf) >9){
+            code1=(c & 0xf) - 10 + 'A';
+        }
+        c=(c>>4)&0xf;
+        code0=c+'0';
+        if (c > 9){
+            code0=c - 10 + 'A';
+        }
+        code2='\0';
+        encoded +='%';
+        encoded +=code0;
+        encoded +=code1;
+        //encodedString+=code2;
+    }
+    yield();
+  }
+  return OS_SUCCESS;
+}
+
+int CLAppComponent::urlDecode(char* decoded, char * source, size_t len) {
   char temp[] = "0x00";
   int i=0;
   char * ptr = decoded;

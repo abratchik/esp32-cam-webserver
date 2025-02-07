@@ -26,13 +26,9 @@
 // #define LED_DISABLE
 
 // Uncomment this line to use LittleFS instead of SD. 
-// NOTE!
-// LittleFS is still experimental, not recommended. The 'official' library installed from the Library Manager 
-// seems to be broken, but fixed in this PR: https://github.com/lorol/LITTLEFS/pull/56 
-// To install it, please navigate to you /libraries sub-folder of your sketch location and then execute 
-// git clone https://github.com/Michael2MacDonald/LITTLEFS.
+// --> to defined in platformio.ini
 
-// #define USE_LittleFS
+//#define USE_LittleFS
 
 /*
  * Camera Hardware Selection
@@ -41,6 +37,8 @@
  * Remember to also select the board in the Boards Manager
  * This is not optional
  */
+
+// --> to defined in platformio.ini
 
 // #define CAMERA_MODEL_AI_THINKER       // default
 // #define CAMERA_MODEL_WROVER_KIT

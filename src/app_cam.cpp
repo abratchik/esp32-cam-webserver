@@ -21,8 +21,8 @@ int CLAppCam::start() {
     config.pin_pclk = PCLK_GPIO_NUM;
     config.pin_vsync = VSYNC_GPIO_NUM;
     config.pin_href = HREF_GPIO_NUM;
-    config.pin_sscb_sda = SIOD_GPIO_NUM;
-    config.pin_sscb_scl = SIOC_GPIO_NUM;
+    config.pin_sccb_sda = SIOD_GPIO_NUM;
+    config.pin_sccb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = xclk * 1000000;
@@ -81,91 +81,85 @@ int CLAppCam::stop() {
 }
 
 int CLAppCam::loadPrefs() {
-    jparse_ctx_t jctx;
-    int ret  = parsePrefs(&jctx);
+    JsonDocument json;
+    int ret  = parsePrefs(json);
     if(ret != OS_SUCCESS) {
         return ret;
     }
 
   // process local settings
 
-    json_obj_get_int(&jctx, (char*)"frame_rate", &frameRate);
-    json_obj_get_int(&jctx, (char*)"xclk", &xclk);
-    json_obj_get_int(&jctx, (char*)"rotate", &myRotation);
+    this->frameRate = json["frame_rate"];
+    this->xclk = json["xclk"];
+    this->myRotation = json["rotate"];
 
     // get sensor reference
     sensor_t * s = esp_camera_sensor_get();
     // process camera settings
     if(s) {
-        s->set_framesize(s, (framesize_t)readJsonIntVal(&jctx, "framesize"));
-        s->set_quality(s, readJsonIntVal(&jctx, "quality"));
+        s->set_framesize(s, (framesize_t)json["framesize"]);
+        s->set_quality(s, json["quality"]);
         s->set_xclk(s, LEDC_TIMER_0, xclk);
-        s->set_brightness(s, readJsonIntVal(&jctx, "brightness"));
-        s->set_contrast(s, readJsonIntVal(&jctx, "contrast"));
-        s->set_saturation(s, readJsonIntVal(&jctx, "saturation"));
-        s->set_sharpness(s, readJsonIntVal(&jctx, "sharpness"));
-        s->set_denoise(s, readJsonIntVal(&jctx, "denoise"));
-        s->set_special_effect(s, readJsonIntVal(&jctx, "special_effect"));
-        s->set_wb_mode(s, readJsonIntVal(&jctx, "wb_mode"));
-        s->set_whitebal(s, readJsonIntVal(&jctx, "awb"));
-        s->set_awb_gain(s, readJsonIntVal(&jctx, "awb_gain"));
-        s->set_exposure_ctrl(s, readJsonIntVal(&jctx, "aec"));
-        s->set_aec2(s, readJsonIntVal(&jctx, "aec2"));
-        s->set_ae_level(s, readJsonIntVal(&jctx, "ae_level"));
-        s->set_aec_value(s, readJsonIntVal(&jctx, "aec_value"));
-        s->set_gain_ctrl(s, readJsonIntVal(&jctx, "agc"));
-        s->set_agc_gain(s, readJsonIntVal(&jctx, "agc_gain"));
-        s->set_gainceiling(s, (gainceiling_t)readJsonIntVal(&jctx, "gainceiling"));
-        s->set_bpc(s, readJsonIntVal(&jctx, "bpc"));
-        s->set_wpc(s, readJsonIntVal(&jctx, "wpc"));
-        s->set_raw_gma(s, readJsonIntVal(&jctx, "raw_gma"));
-        s->set_lenc(s, readJsonIntVal(&jctx, "lenc"));
-        s->set_vflip(s, readJsonIntVal(&jctx, "vflip"));
-        s->set_hmirror(s, readJsonIntVal(&jctx, "hmirror"));
-        s->set_dcw(s, readJsonIntVal(&jctx, "dcw"));
-        s->set_colorbar(s, readJsonIntVal(&jctx, "colorbar"));
+        s->set_brightness(s, json["brightness"]);
+        s->set_contrast(s, json["contrast"]);
+        s->set_saturation(s, json["saturation"]);
+        s->set_sharpness(s, json["sharpness"]);
+        s->set_denoise(s, json["denoise"]);
+        s->set_special_effect(s, json["special_effect"]);
+        s->set_wb_mode(s, json["wb_mode"]);
+        s->set_whitebal(s, json["awb"]);
+        s->set_awb_gain(s, json["awb_gain"]);
+        s->set_exposure_ctrl(s, json["aec"]);
+        s->set_aec2(s, json["aec2"]);
+        s->set_ae_level(s, json["ae_level"]);
+        s->set_aec_value(s, json["aec_value"]);
+        s->set_gain_ctrl(s, json["agc"]);
+        s->set_agc_gain(s, json["agc_gain"]);
+        s->set_gainceiling(s, (gainceiling_t)json["gainceiling"]);
+        s->set_bpc(s, json["bpc"]);
+        s->set_wpc(s, json["wpc"]);
+        s->set_raw_gma(s, json["raw_gma"]);
+        s->set_lenc(s, json["lenc"]);
+        s->set_vflip(s, json["vflip"]);
+        s->set_hmirror(s, json["hmirror"]);
+        s->set_dcw(s, json["dcw"]);
+        s->set_colorbar(s, json["colorbar"]);
         
-        bool dbg;
-        if(json_obj_get_bool(&jctx, (char*)"debug_mode", &dbg) == OS_SUCCESS)
-            setDebugMode(dbg);   
+        if(json["debug_mode"]) setDebugMode(json["debug_mode"]);   
+        
     }
     else {
         Serial.println("Failed to get camera handle. Camera settings skipped");
     }
-  
-    // close the file
-    json_parse_end(&jctx);
+
     return ret;
 }
 
 int CLAppCam::savePrefs(){
-    char * prefs_file = getPrefsFileName(true); 
+    JsonDocument json;
+    char* prefs_file = getPrefsFileName(true); 
 
     if (Storage.exists(prefs_file)) {
-        Serial.print("Updating "); 
+        Serial.printf("Updating %s\r\n", prefs_file); 
     } else {
-        Serial.print("Creating ");
+        Serial.printf("Creating %s\r\n", prefs_file);
     }
-    Serial.println(prefs_file);
-    
-    char buf[CAM_DUMP_BUFFER_SIZE];
-    json_gen_str_t jstr;
-    json_gen_str_start(&jstr, buf, sizeof(buf), NULL, NULL);
-    json_gen_start_object(&jstr);
 
-    dumpStatusToJson(&jstr);
-
-    json_gen_end_object(&jstr);
-    json_gen_str_end(&jstr);
+    dumpStatusToJson(json);
 
     File file = Storage.open(prefs_file, FILE_WRITE);
     if(file) {
-        file.print(buf);
+        serializeJson(json, file);
+        serializeJsonPretty(json, Serial);
+        Serial.println();
+        
         file.close();
+        Serial.printf("File %s updated\r\n", prefs_file);
+        
         return OK;
     }
     else {
-        Serial.print("Failed to save camera preferences to file "); Serial.println(prefs_file);
+        Serial.printf("Failed to save camery preferences to file %s\r\n", prefs_file);
         return FAIL;
     }
 
@@ -184,50 +178,47 @@ void IRAM_ATTR CLAppCam::releaseBuffer() {
     }
 }
 
-void CLAppCam::dumpStatusToJson(json_gen_str_t * jstr, bool full_status) {
- 
+void CLAppCam::dumpStatusToJson(JsonDocument& json, bool full_status) {
     
-    json_gen_obj_set_int(jstr, (char*)"rotate", myRotation);
+    json["rotate"] = this->myRotation;
     
     if(getLastErr()) return;
 
     sensor_t * s = esp_camera_sensor_get();
-    json_gen_obj_set_int(jstr, (char*)"cam_pid", s->id.PID);
-    json_gen_obj_set_int(jstr, (char*)"cam_ver", s->id.VER);        
-    json_gen_obj_set_int(jstr, (char*)"framesize", s->status.framesize);
-    json_gen_obj_set_int(jstr, (char*)"frame_rate", frameRate);   
+    json["cam_pid"] = s->id.PID;
+    json["cam_ver"] = s->id.VER;        
+    json["framesize"] = s->status.framesize;
+    json["frame_rate"] = this->frameRate;   
     
     if(!full_status) return;
 
-    json_gen_obj_set_int(jstr, (char*)"quality", s->status.quality);
-    json_gen_obj_set_int(jstr, (char*)"brightness", s->status.brightness);
-    json_gen_obj_set_int(jstr, (char*)"contrast", s->status.contrast);
-    json_gen_obj_set_int(jstr, (char*)"saturation", s->status.saturation);
-    json_gen_obj_set_int(jstr, (char*)"sharpness", s->status.sharpness);
-    json_gen_obj_set_int(jstr, (char*)"denoise", s->status.denoise);
-    json_gen_obj_set_int(jstr, (char*)"special_effect", s->status.special_effect);
-    json_gen_obj_set_int(jstr, (char*)"wb_mode", s->status.wb_mode);
-    json_gen_obj_set_int(jstr, (char*)"awb", s->status.awb);
-    json_gen_obj_set_int(jstr, (char*)"awb_gain", s->status.awb_gain);
-    json_gen_obj_set_int(jstr, (char*)"aec", s->status.aec);
-    json_gen_obj_set_int(jstr, (char*)"aec2", s->status.aec2);
-    json_gen_obj_set_int(jstr, (char*)"ae_level", s->status.ae_level);
-    json_gen_obj_set_int(jstr, (char*)"aec_value", s->status.aec_value);
-    json_gen_obj_set_int(jstr, (char*)"agc", s->status.agc);
-    json_gen_obj_set_int(jstr, (char*)"agc_gain", s->status.agc_gain);
-    json_gen_obj_set_int(jstr, (char*)"gainceiling", s->status.gainceiling);
-    json_gen_obj_set_int(jstr, (char*)"bpc", s->status.bpc);
-    json_gen_obj_set_int(jstr, (char*)"wpc", s->status.wpc);
-    json_gen_obj_set_int(jstr, (char*)"raw_gma", s->status.raw_gma);
-    json_gen_obj_set_int(jstr, (char*)"lenc", s->status.lenc);
-    json_gen_obj_set_int(jstr, (char*)"vflip", s->status.vflip);
-    json_gen_obj_set_int(jstr, (char*)"hmirror", s->status.hmirror);
-    json_gen_obj_set_int(jstr, (char*)"dcw", s->status.dcw);
-    json_gen_obj_set_int(jstr, (char*)"colorbar", s->status.colorbar);
-    json_gen_obj_set_bool(jstr, (char*)"debug_mode", isDebugMode());
-
-    json_gen_obj_set_int(jstr, (char*)"xclk", xclk); 
-
+    json["quality"]          = s->status.quality;
+    json["brightness"]       = s->status.brightness;
+    json["contrast"]         = s->status.contrast;
+    json["saturation"]       = s->status.saturation;
+    json["sharpness"]        = s->status.sharpness;
+    json["denoise"]          = s->status.denoise;
+    json["special_effect"]   = s->status.special_effect;
+    json["wb_mode"]          = s->status.wb_mode;
+    json["awb"]              = s->status.awb;
+    json["awb_gain"]         = s->status.awb_gain;
+    json["aec"]              = s->status.aec;
+    json["aec2"]             = s->status.aec2;
+    json["ae_level"]         = s->status.ae_level;
+    json["aec_value"]        = s->status.aec_value;
+    json["agc"]              = s->status.agc;
+    json["agc_gain"]         = s->status.agc_gain;
+    json["gainceiling"]      = s->status.gainceiling;
+    json["bpc"]              = s->status.bpc;
+    json["wpc"]              = s->status.wpc;
+    json["raw_gma"]          = s->status.raw_gma;
+    json["lenc"]             = s->status.lenc;
+    json["vflip"]            = s->status.vflip;
+    json["hmirror"]          = s->status.hmirror;
+    json["dcw"]              = s->status.dcw;
+    json["colorbar"]         = s->status.colorbar;
+    json["debug_mode"]       = this->isDebugMode();
+    json["xclk"]             = this->xclk; 
 }
 
 

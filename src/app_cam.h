@@ -6,6 +6,7 @@
 #include <esp_camera.h>
 #include <esp_int_wdt.h>
 #include <esp_task_wdt.h>
+#include <ArduinoJson.h>
 
 #include "app_component.h"
 #include "camera_pins.h"
@@ -44,7 +45,7 @@ class CLAppCam : public CLAppComponent {
         bool IRAM_ATTR isJPEGinBuffer() {return (fb?fb->format == PIXFORMAT_JPEG:false);};
         void releaseBuffer(); 
 
-        void dumpStatusToJson(json_gen_str_t * jstr, bool full_status = true);
+        void dumpStatusToJson(JsonDocument& json, bool full_status = true);
 
     private:
         // Camera config structure

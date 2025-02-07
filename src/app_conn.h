@@ -7,6 +7,7 @@
 #include <DNSServer.h>
 #include <ESPmDNS.h>
 #include <time.h>
+#include <ArduinoJson.h>
 
 #include "parsebytes.h"
 #include "app_component.h"
@@ -20,7 +21,7 @@
  * @brief WiFi connectivity details (SSID/password).
  * 
  */
-struct Station { char ssid[64]; char password[64]; };
+struct Station { String ssid; String password; };
 
 /**
  * @brief Static IP structure for configuring AP and WiFi parameters
@@ -48,62 +49,62 @@ class CLAppConn : public CLAppComponent {
         void handleOTA() {if(otaEnabled) ArduinoOTA.handle();};
         bool isOTAEnabled() {return otaEnabled;};        
         void setOTAEnabled(bool val) {otaEnabled = val;};
-        void setOTAPassword(const char * str) {snprintf(otaPassword, sizeof(otaPassword), str);};
+        void setOTAPassword(const String val) {otaPassword = val;};
 
         void configMDNS();
         void handleDNSRequest(){if (captivePortal) dnsServer.processNextRequest();};
-        char * getMDNSname() {return mdnsName;};
-        void setMDNSName(const char * str) {snprintf(mdnsName, sizeof(mdnsName), str);};
+        const String& getMDNSname() {return mdnsName;};
+        void setMDNSName(String val) {mdnsName = val;};
 
         void configNTP();
-        char * getNTPServer() { return ntpServer;};
-        void setNTPServer(const char * str) {snprintf(ntpServer, sizeof(ntpServer), str);};
+        const String& getNTPServer() { return ntpServer;};
+        void setNTPServer(const String val) {ntpServer = val;};
         long getGmtOffset_sec() {return gmtOffset_sec;};
         void setGmtOffset_sec(long sec) {gmtOffset_sec = sec;};
         int getDaylightOffset_sec() {return daylightOffset_sec;};
         void setDaylightOffset_sec(int sec) {daylightOffset_sec = sec;};
 
-        char * getSSID() {return ssid;};
-        void setSSID(const char * str) {snprintf(ssid, sizeof(ssid), str);};
-        void setPassword(const char * str) {snprintf(password, sizeof(password), str);};;
+        const String& getSSID() {return ssid;};
+        void setSSID(const String val) {ssid = val;};
+        void setPassword(const String val) {password = val;};;
 
         bool isDHCPEnabled() {return dhcp;};
         void setDHCPEnabled(bool val) {dhcp = val;};
-        StaticIP * getStaticIP() {return &staticIP;};
+        StaticIP* getStaticIP() {return &staticIP;};
         void setStaticIP(IPAddress ** address, const char * strval);
 
         wl_status_t wifiStatus() {return (accesspoint?ap_status:WiFi.status());};
 
-        char * getHTTPUrl(){ return httpURL;};
+        const String& getHTTPUrl(){ return httpURL;};
         // char * getStreamUrl(){ return streamURL;};
         int getPort() {return httpPort;};
         void setPort(int port) {httpPort = port;};
 
-        char * getApName() {return apName;};
-        void setApName(const char * str) {snprintf(apName, sizeof(apName), str);};
-        void setApPass(const char * str) {snprintf(apPass, sizeof(apPass), str);};
+        const String& getApName() {return apName;};
+        void setApName(const String val) {apName = val;};
+        void setApPass(const String val) {apPass = val;};
 
         bool isAccessPoint() {return accesspoint;};
         void setAccessPoint(bool val) {accesspoint = val;};
         void setLoadAsAP(bool val) {load_as_ap = val;}
         bool getAPDHCP() {return ap_dhcp;};
         void setAPDHCP(bool val) {ap_dhcp = val;};
-        StaticIP * getAPIP() {return &apIP;};
+        StaticIP* getAPIP() {return &apIP;};
         int getAPChannel() {return ap_channel;};
         void setAPChannel(int channel) {ap_channel = channel;};
 
         bool isCaptivePortal() {return captivePortal;};
 
-        char * getLocalTimeStr() {return localTimeString;};
-        char * getUpTimeStr() {return upTimeString;};
+        const String& getLocalTimeStr() {return localTimeString;};
+        const String& getUpTimeStr() {return upTimeString;};
         void updateTimeStr();
 
         void printLocalTime(bool extraData=false);
 
-        char * getUser() {return user;};
-        char * getPwd() {return pwd;};
-        void setUser(const char * val) {snprintf(user, sizeof(user), val);};
-        void setPwd(const char * val) {snprintf(pwd, sizeof(pwd), val);}
+        const String& getUser() {return user;};
+        const String& getPwd() {return pwd;};
+        void setUser(const String val) {user = val;};
+        void setPwd(const String val) {pwd = val;}
 
     private:
         int getSSIDIndex();
@@ -111,7 +112,7 @@ class CLAppConn : public CLAppComponent {
         void readIPFromJSON(jparse_ctx_t * context, IPAddress ** ip_address, char * token);
 
         // Known networks structure. Max number of known stations limited for memory considerations
-        Station *stationList[MAX_KNOWN_STATIONS]; 
+        Station* stationList; 
         // number of known stations
         int stationCount = 0;
 
@@ -120,16 +121,16 @@ class CLAppConn : public CLAppComponent {
 
         bool dhcp=false;
 
-        char ssid[64];
-        char password[64];
+        String ssid;
+        String password;
 
-        char mdnsName[32];
+        String mdnsName;
 
         bool accesspoint = false;
         bool load_as_ap = false;
 
-        char apName[20];
-        char apPass[20];
+        String apName;
+        String apPass;
         int ap_channel=1;
         StaticIP apIP;
         bool ap_dhcp=true;
@@ -141,30 +142,30 @@ class CLAppConn : public CLAppComponent {
         bool captivePortal = false;
 
         // HOST_NAME
-        char hostName[64];
+        String hostName;
 
         // The app and stream URLs (initialized during WiFi setup)
-        char httpURL[64];
-        char streamURL[64];
+        String httpURL;
+        String streamURL;
 
         // HTTP Port. Can be overriden during IP setup
-        int httpPort = 80;
+        uint16_t httpPort = 80;
         
         // user name and password
-        char user[CREDENTIALS_SIZE] = "admin";
-        char pwd[CREDENTIALS_SIZE] = "admin";
+        String user = "admin";
+        String pwd = "admin";
 
         // OTA parameters
         bool otaEnabled = false;
-        char otaPassword[20] = "";
+        String otaPassword = "";
 
         // NTP parameters
-        char ntpServer[20] = "";
+        String ntpServer = "";
         long  gmtOffset_sec;
         int  daylightOffset_sec;
 
-        char localTimeString[50];
-        char upTimeString[50];
+        String localTimeString;
+        String upTimeString;
 
 };
 
