@@ -44,7 +44,7 @@
  * This is not optional
  */
 
-#define CAMERA_MODEL_AI_THINKER       // default
+// #define CAMERA_MODEL_AI_THINKER       // default
 // #define CAMERA_MODEL_WROVER_KIT
 // #define CAMERA_MODEL_ESP_EYE
 // #define CAMERA_MODEL_M5STACK_PSRAM

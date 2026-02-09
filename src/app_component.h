@@ -1,8 +1,7 @@
 #ifndef app_component_h
 #define app_component_h
 
-#include "json_generator.h"
-#include "json_parser.h"
+#include <ArduinoJson.h>
 
 #if __has_include("../myconfig.h")
 #include "../myconfig.h"
@@ -11,6 +10,8 @@
 #endif
 
 #include "storage.h"
+
+#include <esp_log.h>
 
 #define TAG_LENGTH 32
 
@@ -22,17 +23,14 @@ class CLAppComponent {
     public:
     // Sketch Info
     
-        virtual int start(){return OS_SUCCESS;};
-        virtual int loadPrefs(){return OS_SUCCESS;};
-        virtual int savePrefs(){return OS_SUCCESS;};
+        virtual int start(){return OK;};
+        virtual int loadPrefs(){return OK;};
+        virtual int savePrefs(){return OK;};
         
         virtual void dumpPrefs();
         virtual int removePrefs();
         
         char * getPrefsFileName(bool forsave = false);
-
-        // void setDebugMode(bool val) {debug_mode = val;};
-        // bool isDebugMode(){return debug_mode;};
 
         int getLastErr() {return last_err;};
 
@@ -50,13 +48,7 @@ class CLAppComponent {
 
         void setErr(int err_code) {last_err = err_code;};
 
-        /// @brief reads the Int value from JSON context by token. 
-        /// @param jctx JSON context pointer
-        /// @param token JSON field where the value is to be retrieved from
-        /// @return value, or 0 if fail
-        int readJsonIntVal(jparse_ctx_t *jctx, const char* token);
-
-        int parsePrefs(jparse_ctx_t *jctx);
+        int parsePrefs(JsonDocument *jctx);
 
         int urlDecode(char * decoded, char * source, size_t len); 
         int urlEncode(char * encoded, char * source, size_t len);
@@ -65,8 +57,6 @@ class CLAppComponent {
     private:
 
         bool configured = false;
-
-        // bool debug_mode = false;
 
         // error code of the last error
         int last_err = 0;

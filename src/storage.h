@@ -47,7 +47,7 @@ class CLStorage {
         /// @param levels 
         void listDir(const char * dirname, uint8_t levels);
 
-        int getSize();
+        uint16_t getSize();
         int getUsed();
         int capacityUnits();
 

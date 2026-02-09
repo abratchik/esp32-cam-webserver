@@ -37,7 +37,7 @@ void setup() {
     delay(200); // a short delay to let spi bus settle after init
 
     // Start (init) the camera 
-    if (AppCam.start() != OS_SUCCESS) {
+    if (AppCam.start() != OK) {
         delay(100);  // need a delay here or the next serial o/p gets missed
         ESP_LOGE(TAG,"CRITICAL FAILURE:%s", AppCam.getErr()); 
         ESP_LOGE(TAG,"A full (hard, power off/on) reboot will probably be needed to recover from this.");
@@ -140,7 +140,7 @@ void filesystemStart(){
     ESP_LOGI(TAG,"Retrying...");
   }
   
-  // Storage.listDir("/", 0);
+  Storage.listDir("/", 0);
 }
 
 // Serial input 

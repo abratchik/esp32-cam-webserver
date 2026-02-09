@@ -1,6 +1,7 @@
 #include "storage.h"
 
 void CLStorage::listDir(const char * dirname, uint8_t levels){
+#if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_INFO_LEVEL )
   ESP_LOGI(tag, "Listing directory: %s", dirname);
 
   File root = fsStorage->open(dirname);
@@ -31,6 +32,7 @@ void CLStorage::listDir(const char * dirname, uint8_t levels){
     }
     file = root.openNextFile();
   }
+#endif
 }
 
 
@@ -65,7 +67,7 @@ bool CLStorage::init() {
       break;    
   }
 
-  ESP_LOGI(tag,"Card size: %lluMB", getSize());
+  ESP_LOGI(tag,"Card size: %dMB", getSize());
   
   return true;
 #endif
@@ -87,12 +89,12 @@ int CLStorage::readFileToString(char *path, String *s)
 	return OK;
 }
 
-int CLStorage::getSize() {
-  return (int) (fsStorage->totalBytes() / pow(1024, STORAGE_UNITS));
+uint16_t CLStorage::getSize() {
+  return (uint16_t) ((double) fsStorage->totalBytes() / pow(1024, STORAGE_UNITS));
 }
 
 int CLStorage::getUsed() {
-  return (int) (fsStorage->usedBytes() / pow(1024, STORAGE_UNITS));
+  return (int) ((double) fsStorage->usedBytes() / pow(1024, STORAGE_UNITS));
 }
 
 int CLStorage::capacityUnits() {

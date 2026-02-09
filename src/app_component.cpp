@@ -7,7 +7,7 @@ char * CLAppComponent::getPrefsFileName(bool forsave) {
         if(configured || forsave)
             return prefs;
         else {
-            Serial.printf("Pref file %s not found, falling back to default\r\n", prefs);
+            ESP_LOGW(tag, "Pref file %s not found, falling back to default", prefs);
             if(prefix)
               snprintf(prefs, TAG_LENGTH, "/%s_%s.json", prefix, tag);
             else
@@ -23,56 +23,44 @@ void CLAppComponent::dumpPrefs() {
     char *prefs_file = getPrefsFileName(); 
     String s;
     if(Storage.readFileToString(prefs_file, &s) != OK) {
-        Serial.printf("Preference file %s not found.\r\n", prefs_file);
+        ESP_LOGE(tag,"Preference file %s not found.", prefs_file);
         return;
     }
     Serial.println(s);
 }
 
-int CLAppComponent::readJsonIntVal(jparse_ctx_t *jctx_ptr, const char* token) {
-  int res=0;
-
-  char * ptr = const_cast<char *>(token);
-
-  if(json_obj_get_int(jctx_ptr, ptr, &res) == OS_SUCCESS)
-    return res;
-
-  return 0;
-}
-
 int CLAppComponent::removePrefs() {
   char *prefs_file = getPrefsFileName(true);  
   if (Storage.exists(prefs_file)) {
-    Serial.printf("Removing %s\r\n", prefs_file);
+    ESP_LOGI(tag, "Removing %s\r\n", prefs_file);
     if (!Storage.remove(prefs_file)) {
-      Serial.printf("Error removing %s preferences\r\n", tag);
-      return OS_FAIL;
+      ESP_LOGE(tag,"Error removing %s preferences", tag);
+      return FAIL;
     }
   } else {
-    Serial.printf("No saved %s preferences to remove\r\n", tag);
+    ESP_LOGW(tag,"No saved %s preferences to remove", tag);
   }
-  return OS_SUCCESS;
+  return OK;
 }
 
-int CLAppComponent::parsePrefs(jparse_ctx_t *jctx) {
-  char *conn_file = getPrefsFileName(); 
+int CLAppComponent::parsePrefs(JsonDocument *doc) {
+  char *pref_file = getPrefsFileName(); 
 
-  String conn_json;
+  String pref_json;
 
-  if(Storage.readFileToString(conn_file, &conn_json) != OK) {
-      Serial.printf("Failed to open the connection settings from %s \r\n", conn_file);
-      return OS_FAIL;
+  if(Storage.readFileToString(pref_file, &pref_json) != OK) {
+      ESP_LOGE(tag, "Failed to open the connection settings from %s", pref_file);
+      return FAIL;
   }
 
-  char *cn_ptr = const_cast<char*>(conn_json.c_str());
+  DeserializationError ret = deserializeJson(*doc, pref_json);
 
-  int ret = json_parse_start(jctx, cn_ptr, conn_json.length());
-  if(ret != OS_SUCCESS) {
-      Serial.printf("Preference file %s could not be parsed; using system defaults.\r\n", conn_file);
-      return OS_FAIL;
+  if(ret != DeserializationError::Ok) {
+      ESP_LOGW(tag,"Preference file %s could not be parsed; using system defaults.", pref_file);
+      return FAIL;
   }
 
-  return ret;
+  return OK;
 }
 
 int CLAppComponent::urlDecode(char * decoded, char * source, size_t len) {
@@ -96,7 +84,7 @@ int CLAppComponent::urlDecode(char * decoded, char * source, size_t len) {
     ptr++;
     if(decodedChar == '\0') break;
   }
-  return OS_SUCCESS;
+  return OK;
 }
 
 int CLAppComponent::urlEncode(char * encoded, char * source, size_t len) {
@@ -134,5 +122,5 @@ int CLAppComponent::urlEncode(char * encoded, char * source, size_t len) {
     }
   }
   *ptr = '\0';
-  return OS_SUCCESS;
+  return OK;
 }

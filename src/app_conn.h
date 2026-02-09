@@ -7,6 +7,7 @@
 #include <DNSServer.h>
 #include <ESPmDNS.h>
 #include <time.h>
+#include <ArduinoJson.h>
 
 #include "parsebytes.h"
 #include "app_component.h"
@@ -110,7 +111,7 @@ class CLAppConn : public CLAppComponent {
     private:
         int getSSIDIndex();
         void calcURLs();
-        void readIPFromJSON(jparse_ctx_t * context, IPAddress ** ip_address, char * token);
+        void readIPFromJSON(JsonObject context, IPAddress ** ip_address, const char * token);
 
         // Known networks structure. Max number of known stations limited for memory considerations
         Station *stationList[MAX_KNOWN_STATIONS]; 
