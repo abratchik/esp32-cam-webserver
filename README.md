@@ -219,8 +219,7 @@ This file can be also updated via the Web UI.
     "ap_dhcp":true,
     "ntp_server":"pool.ntp.org",
     "gmt_offset":14400,
-    "dst_offset":0,
-    "debug_mode": false
+    "dst_offset":0
 }
 ```
 
@@ -236,8 +235,7 @@ This file can be also updated via the Web UI.
     "pwm": [{"pin":4, "frequency":50000, "resolution":9, "default":0}],
     "mapping":[ {"uri":"/img", "path": "/www/img"},
                 {"uri":"/css", "path": "/www/css"},
-                {"uri":"/js", "path": "/www/js"}],
-    "debug_mode": false
+                {"uri":"/js", "path": "/www/js"}]
 }
 ```
 The parameter `pwm` allows to configure PWM out, which can be used in various applications (for example,
@@ -274,8 +272,7 @@ The parameter `mapping` allows to configure folders with static content for the 
     "hmirror":0,
     "dcw":1,
     "colorbar":0,
-    "rotate":"0", 
-    "debug_mode": false
+    "rotate":"0"
 }
 ```
 

@@ -191,7 +191,7 @@ String processor(const String& var) {
 }
 
 
-int IRAM_ATTR CLAppHttpd::snapFrame(bool debug) {
+int IRAM_ATTR CLAppHttpd::snapFrame() {
     int res = AppCam.snapToBuffer();
 
     if(!res) {
@@ -246,7 +246,7 @@ StreamResponseEnum CLAppHttpd::startStream(uint32_t id, CaptureModeEnum streammo
 
             int64_t fr_start = esp_timer_get_time();
         
-            if (snapFrame(isDebugMode()) != OS_SUCCESS) {
+            if (snapFrame() != OS_SUCCESS) {
                 if(_autoLamp) setLamp(0);
                 return STREAM_IMAGE_CAPTURE_FAILED;
             }
@@ -685,10 +685,6 @@ int CLAppHttpd::loadPrefs() {
 
     json_obj_get_string(&jctx, (char*)"my_name", myName, sizeof(myName));
 
-    bool dbg;
-    if(json_obj_get_bool(&jctx, (char*)"debug_mode", &dbg) == OS_SUCCESS)
-        setDebugMode(dbg);  
-
     return ret;
 }
 
@@ -732,7 +728,6 @@ int CLAppHttpd::savePrefs() {
         }
         json_gen_pop_array(&jstr);
     }
-    json_gen_obj_set_bool(&jstr, (char*)"debug_mode", isDebugMode());
 
     json_gen_end_object(&jstr);
     json_gen_str_end(&jstr);

@@ -148,7 +148,7 @@ void handleSerial() {
     if(Serial.available()) {
         char cmd = Serial.read();
 
-        // Rceiving commands and data from serial. Any input, which doesnt start from '#' is ignored.
+        // Receiving commands and data from serial. Any input, which doesnt start from '#' is ignored.
         if (cmd == '#' ) {
             String rsp = Serial.readStringUntil('\n');
             rsp.trim();

@@ -31,8 +31,8 @@ class CLAppComponent {
         
         char * getPrefsFileName(bool forsave = false);
 
-        void setDebugMode(bool val) {debug_mode = val;};
-        bool isDebugMode(){return debug_mode;};
+        // void setDebugMode(bool val) {debug_mode = val;};
+        // bool isDebugMode(){return debug_mode;};
 
         int getLastErr() {return last_err;};
 
@@ -66,7 +66,7 @@ class CLAppComponent {
 
         bool configured = false;
 
-        bool debug_mode = false;
+        // bool debug_mode = false;
 
         // error code of the last error
         int last_err = 0;

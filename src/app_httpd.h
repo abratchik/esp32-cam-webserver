@@ -84,7 +84,7 @@ class CLAppHttpd : public CLAppComponent {
         void incImagesServed(){_imagesServed++;};
         
         // capture a frame and send it to the clients
-        int snapFrame(bool debug = false);
+        int snapFrame();
 
         // start stream
         StreamResponseEnum startStream(uint32_t id, CaptureModeEnum stream_mode);

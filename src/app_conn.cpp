@@ -282,10 +282,6 @@ int CLAppConn::loadPrefs() {
     }
     json_obj_get_int(&jctx, (char*)"dst_offset", &daylightOffset_sec);
 
-    bool dbg;
-    if(json_obj_get_bool(&jctx, (char*)"debug_mode", &dbg) == OS_SUCCESS)
-        setDebugMode(dbg);    
-
     // close the file
     json_parse_end(&jctx);
     return ret;
@@ -385,7 +381,6 @@ int CLAppConn::savePrefs() {
     json_gen_obj_set_int(&jstr, "gmt_offset", gmtOffset_sec);
     json_gen_obj_set_int(&jstr, "dst_offset", daylightOffset_sec);
 
-    json_gen_obj_set_bool(&jstr, "debug_mode", isDebugMode());
     json_gen_end_object(&jstr);
     json_gen_str_end(&jstr);
 

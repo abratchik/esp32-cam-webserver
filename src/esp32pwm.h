@@ -26,6 +26,9 @@
 #include <cstdint>
 
 #include "Arduino.h"
+
+#include <esp_log.h>
+
 class ESP32PWM {
 
     public:
@@ -142,6 +145,8 @@ class ESP32PWM {
         int pin;
         uint8_t resolutionBits;
         double myFreq;
+
+        const char * tag = "pwm";
 
 };
 

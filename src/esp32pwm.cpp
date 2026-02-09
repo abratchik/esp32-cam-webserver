@@ -74,11 +74,10 @@ int ESP32PWM::allocatenext(double freq) {
 					|| (timerFreqSet[i] == -1));
 			if (freqAllocated && timerCount[i] < 4) {
 				if (timerFreqSet[i] == -1) {
-					//Serial.println("Starting timer "+String(i)+" at freq "+String(freq));
+					ESP_LOGD(tag,"Starting timer %d at freq %f", i, freq);
 					timerFreqSet[i] = freqlocal;
 				}
-				//Serial.println("Free channel timer "+String(i)+" at freq "+String(freq)+" remaining "+String(4-timerCount[i]));
-
+				ESP_LOGD(tag,"Free channel timer %d at freq %f remaining %d", i, freq, 4-timerCount[i]);
 				timerNum = i;
 				for (int index=0; index<4; ++index)
 				{
@@ -86,10 +85,7 @@ int ESP32PWM::allocatenext(double freq) {
 					if ((myTimerNumber >= 0)  && (!ChannelUsed[myTimerNumber]))
 					{
 						pwmChannel = myTimerNumber;
-// 						Serial.println(
-// 							"PWM on ledc channel #" + String(pwmChannel)
-// 									+ " using 'timer " + String(timerNum)
-// 									+ "' to freq " + String(freq) + "Hz");
+						ESP_LOGD(tag,"PWM on ledc channel #%d using timer %d at freq %f Hz", pwmChannel, timerNum, freq);
 						ChannelUsed[pwmChannel] = this;
 						timerCount[timerNum]++;
 						PWMCount++;
@@ -97,19 +93,22 @@ int ESP32PWM::allocatenext(double freq) {
 						return pwmChannel;
 					}
 				}
-			} else {
-//				if(timerFreqSet[i]>0)
-//					Serial.println("Timer freq mismatch target="+String(freq)+" on timer "+String(i)+" was "+String(timerFreqSet[i]));
-//				else
-//					Serial.println("Timer out of channels target="+String(freq)+" on timer "+String(i)+" was "+String(timerCount[i]));
+			} 
+		#if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
+			else {
+				if(timerFreqSet[i]>0) {
+					ESP_LOGD(tag,"Timer freq mismatch target=%f on timer %d was %f", freq, i, timerFreqSet[i]);
+				}
+				else {
+					ESP_LOGD(tag,"Timer out of channels target=%f on timer %d was %d", freq, i, timerCount[i]);
+				}
 			}
+		#endif
 		}
 	} else {
 		return pwmChannel;
 	}
-	Serial.println(
-			"ERROR All PWM timers allocated! Can't accommodate " + String(freq)
-					+ "Hz\r\nHalting...");
+	ESP_LOGE(tag,"All PWM timers allocated! Can't accommodate %f Hz! Halting...", freq);
 	while (1)
 		;
 }
@@ -117,7 +116,7 @@ int ESP32PWM::allocatenext(double freq) {
 void ESP32PWM::deallocate() {
 	if (pwmChannel < 0)
 		return;
-// 	Serial.println("PWM deallocating LEDc #" + String(pwmChannel));
+ 	ESP_LOGD(tag,"PWM deallocating LEDc #%d",pwmChannel);
 	timerCount[getTimer()]--;
 	if (timerCount[getTimer()] == 0) {
 		timerFreqSet[getTimer()] = -1; // last pwn closed out
@@ -132,7 +131,7 @@ void ESP32PWM::deallocate() {
 
 int ESP32PWM::getChannel() {
 	if (pwmChannel < 0) {
-		Serial.println("FAIL! must setup() before using get channel!");
+		ESP_LOGE(tag,"Must setup() before using getChannel()!");
 	}
 	return pwmChannel;
 }
@@ -205,24 +204,24 @@ void ESP32PWM::attach(int p) {
 	pin = p;
 	attachedState = true;
 }
+
 void ESP32PWM::attachPin(uint8_t pin) {
 
 	if (hasPwm(pin)) {
 		attach(pin);
 		ledcAttachPin(pin, getChannel());
 	} else {
-		Serial.println(
-				"ERROR PWM channel unavailable on pin requested! " + String(pin)
+		ESP_LOGE(tag, "PWM channel unavailable on pin %d!", pin);		
 #if defined(ARDUINO_ESP32S2_DEV)
-						+ "\r\nPWM available on: 1-21,26,33-42"
+		ESP_LOGE(tag,"PWM available on: 1-21,26,33-42");
 #else
-						+ "\r\nPWM available on: 2,4,5,12-19,21-23,25-27,32-33"
+		ESP_LOGE(tag,"PWM available on: 2,4,5,12-19,21-23,25-27,32-33");
 #endif
-		);
 		return;
 	}
-	//Serial.print(" on pin "+String(pin));
+
 }
+
 void ESP32PWM::attachPin(uint8_t pin, double freq, uint8_t resolution_bits) {
 
 	if (hasPwm(pin))
@@ -266,17 +265,8 @@ bool ESP32PWM::checkFrequencyForSideEffects(double freq) {
 			if (ChannelUsed[pwm]->getTimer() == getTimer()) {
 				double diff = abs(ChannelUsed[pwm]->myFreq - freq);
 				if (abs(diff) > 0.1) {
-					Serial.println(
-							"\tWARNING PWM channel " + String(pwmChannel)
-									+ " shares a timer with channel "
-									+ String(pwm) + "\n"
-											"\tchanging the frequency to "
-									+ String(freq)
-									+ " Hz will ALSO change channel "
-									+ String(pwm)
-									+ " \n\tfrom its previous frequency of "
-									+ String(ChannelUsed[pwm]->myFreq) + " Hz\n"
-											" ");
+					ESP_LOGW(tag, "PWM channel %d shares a timer with channel %d. Changing the frequency to %.2f Hz will also change channel %d from its previous frequency of %.2f Hz",
+							pwmChannel, pwm, freq, pwm, ChannelUsed[pwm]->myFreq);						
 					ChannelUsed[pwm]->myFreq = freq;
 				}
 			}

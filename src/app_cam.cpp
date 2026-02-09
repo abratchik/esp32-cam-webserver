@@ -125,9 +125,6 @@ int CLAppCam::loadPrefs() {
         s->set_dcw(s, readJsonIntVal(&jctx, "dcw"));
         s->set_colorbar(s, readJsonIntVal(&jctx, "colorbar"));
         
-        bool dbg;
-        if(json_obj_get_bool(&jctx, (char*)"debug_mode", &dbg) == OS_SUCCESS)
-            setDebugMode(dbg);   
     }
     else {
         ESP_LOGW(tag,"Failed to get camera handle. Camera settings skipped");
@@ -219,7 +216,6 @@ void CLAppCam::dumpStatusToJson(json_gen_str_t * jstr, bool full_status) {
     json_gen_obj_set_int(jstr, (char*)"hmirror", s->status.hmirror);
     json_gen_obj_set_int(jstr, (char*)"dcw", s->status.dcw);
     json_gen_obj_set_int(jstr, (char*)"colorbar", s->status.colorbar);
-    json_gen_obj_set_bool(jstr, (char*)"debug_mode", isDebugMode());
 
     json_gen_obj_set_int(jstr, (char*)"xclk", xclk); 
 
