@@ -629,15 +629,15 @@ int CLAppHttpd::loadPrefs() {
     _flashLamp = doc["flashlamp"] | 0;
     _max_streams = doc["max_streams"] | 2;
 
-    int count = 0, pin = 0, freq = 0, resolution = 0, def_val = 0;
+    int pin = 0, freq = 0, resolution = 0, def_val = 0;
 
     JsonArray jaPWM = doc["pwm"].as<JsonArray>();
 
-    for(JsonObject obj : jaPWM) {
-        pin = obj["pin"] | 0;
-        freq = obj["frequency"] | 0;
-        resolution = obj["resolution"] | 0;
-        def_val = obj["default"] | 0;
+    for(JsonObject joPWM : jaPWM) {
+        pin = joPWM["pin"] | 0;
+        freq = joPWM["frequency"] | 0;
+        resolution = joPWM["resolution"] | 0;
+        def_val = joPWM["default"] | 0;
 
         int index = attachPWM(pin, freq, resolution);
         delay(75); // let the PWM settle
@@ -657,17 +657,19 @@ int CLAppHttpd::loadPrefs() {
             ESP_LOGW(tag,"Failed to attach PWM to pin %d", pin);
     }
 
-    JsonArray jaMapping = doc[(char*)"mapping"].as<JsonArray>();
+    JsonArray jaMapping = doc["mapping"].as<JsonArray>();
 
-    for(JsonObject obj : jaMapping) {
+    for(JsonObject joMap : jaMapping) {
         UriMapping *um = (UriMapping*) malloc(sizeof(UriMapping));
-        if(snprintf(um->uri, sizeof(um->uri), "%s", doc["uri"] | "") > 0 &&
-           snprintf(um->path, sizeof(um->path), "%s", doc["path"] | "") > 0) {
-            mappingList[count] = um;
-            count++;
-            if(count >= MAX_URI_MAPPINGS) break;
+        if(snprintf(um->uri, sizeof(um->uri), "%s", joMap["uri"] | "") > 0 &&
+           snprintf(um->path, sizeof(um->path), "%s", joMap["path"] | "") > 0) {
+            mappingList[_mappingCount] = um;
+            ESP_LOGI(tag,"Added URI mapping: %s -> %s", um->uri, um->path);
+            _mappingCount++;
+            if(_mappingCount >= MAX_URI_MAPPINGS) break;
         } 
         else {
+            ESP_LOGW(tag,"Failed to parse URI mapping for uri %s and path %s", joMap["uri"] | "", joMap["path"] | "");
             free(um);
         }
     }
