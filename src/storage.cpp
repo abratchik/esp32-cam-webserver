@@ -1,15 +1,15 @@
 #include "storage.h"
 
 void CLStorage::listDir(const char * dirname, uint8_t levels){
-  Serial.printf("Listing directory: %s\r\n", dirname);
+  ESP_LOGI(tag, "Listing directory: %s", dirname);
 
   File root = fsStorage->open(dirname);
   if(!root){
-    Serial.println("- failed to open directory");
+    ESP_LOGW(tag,"Failed to open directory");
     return;
   }
   if(!root.isDirectory()){
-    Serial.println(" - not a directory");
+    ESP_LOGW(tag,"Not a directory");
     return;
   }
   
@@ -49,23 +49,23 @@ bool CLStorage::init() {
 
   switch(cardType) {
     case CARD_NONE:
-      Serial.println("No SD card attached");
+      ESP_LOGE(tag,"No SD card attached");
       return false;
     case CARD_MMC:
-      Serial.print("MMC");
+      ESP_LOGI(tag,"MMC");
       break;
     case CARD_SD:
-      Serial.print("SDSC");
+      ESP_LOGI(tag,"SDSC");
       break;
     case CARD_SDHC:
-      Serial.print("SDHC");
+      ESP_LOGI(tag,"SDHC");
       break;
     default:
-      Serial.println("Unknown Type");
+      ESP_LOGW(tag,"Unknown Type");
       break;    
   }
 
-  Serial.printf(" card size: %lluMB\n", getSize());
+  ESP_LOGI(tag,"Card size: %lluMB", getSize());
   
   return true;
 #endif

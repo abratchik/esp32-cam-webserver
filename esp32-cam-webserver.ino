@@ -6,11 +6,14 @@
 #include "src/app_httpd.h"      // Web server
 #include "src/camera_pins.h"    // Pin Mappings
 
+#include <esp_log.h>
+
 /* 
  * This sketch is a extension/expansion/rework of the ESP32 Camera webserer example.
  * 
  */
 
+const char* TAG = "ino";
 
 void setup() {
     Serial.begin(115200);
@@ -18,9 +21,9 @@ void setup() {
 
     // Warn if no PSRAM is detected (typically user error with board selection in the IDE)
     if(!psramFound()){
-        Serial.println("\r\nFatal Error; Halting");
+        ESP_LOGE(TAG, "Fatal Error; Halting");
         while (true) {
-            Serial.println("No PSRAM found; camera cannot be initialised: Please check the board config for your module.");
+            ESP_LOGE(TAG, "No PSRAM found; camera cannot be initialised: Please check the board config for your module.");
             delay(5000);
         }
     }
@@ -36,15 +39,14 @@ void setup() {
     // Start (init) the camera 
     if (AppCam.start() != OS_SUCCESS) {
         delay(100);  // need a delay here or the next serial o/p gets missed
-        Serial.println();
-        Serial.print("CRITICAL FAILURE:"); Serial.println(AppCam.getErr());
-        Serial.println("A full (hard, power off/on) reboot will probably be needed to recover from this.");
-        Serial.println("Meanwhile; this unit will reboot in 1 minute since these errors sometime clear automatically");
+        ESP_LOGE(TAG,"CRITICAL FAILURE:%s", AppCam.getErr()); 
+        ESP_LOGE(TAG,"A full (hard, power off/on) reboot will probably be needed to recover from this.");
+        ESP_LOGE(TAG,"Meanwhile; this unit will reboot in 1 minute since these errors sometime clear automatically");
         resetI2CBus();
         scheduleReboot(60);
     }
     else
-        Serial.println("Camera init succeeded");
+        ESP_LOGI(TAG,"Camera init succeeded");
 
     // Now load and apply preferences
     delay(200); // a short delay to let spi bus settle after camera init
@@ -57,7 +59,7 @@ void setup() {
     // Start Wifi and loop until we are connected or have started an AccessPoint
     while (AppConn.wifiStatus() != WL_CONNECTED)  {
         if(AppConn.start() != WL_CONNECTED) {
-            Serial.println("Failed to initiate WiFi, retryng in 5 sec ... ");
+            ESP_LOGW(TAG,"Failed to initiate WiFi, retrying in 5 sec ... ");
             delay(5000);
         }
         else {
@@ -89,7 +91,6 @@ void loop() {
         // Rather than loop forever, follow the watchdog, in case we later add auto re-scan.
         unsigned long pingwifi = millis();
         while (millis() - pingwifi < WIFI_WATCHDOG ) {
-            // delay(100);
             AppConn.handleOTA();
             handleSerial();
             AppConn.handleDNSRequest();
@@ -126,16 +127,17 @@ void loop() {
 
 /// @brief tries to initialize the filesystem until success, otherwise loops indefinitely
 void filesystemStart(){
-  Serial.println("Starting filesystem");
+
+  ESP_LOGI(TAG, "Starting filesystem");
   while ( !Storage.init() ) {
     // if we sit in this loop something is wrong;
-    Serial.println("Filesystem mount failed");
+    ESP_LOGE(TAG, "Filesystem mount failed");
     for (int i=0; i<10; i++) {
       flashLED(100); // Show filesystem failure
       delay(100);
     }
     delay(1000);
-    Serial.println("Retrying..");
+    ESP_LOGI(TAG,"Retrying...");
   }
   
   // Storage.listDir("/", 0);

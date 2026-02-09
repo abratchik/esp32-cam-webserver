@@ -10,7 +10,7 @@ int CLAppConn::start() {
         return WiFi.status();
     }
     
-    Serial.println("Starting WiFi");
+    ESP_LOGI(tag,"Starting WiFi");
 
     WiFi.setHostname(mdnsName);
     
@@ -22,7 +22,7 @@ int CLAppConn::start() {
     
     byte mac[6] = {0,0,0,0,0,0};
     WiFi.macAddress(mac);
-    Serial.printf("MAC address: %02X:%02X:%02X:%02X:%02X:%02X\r\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    ESP_LOGI(tag,"MAC address: %02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 
     int bestStation = -1;
     long bestRSSI = -1024;
@@ -34,9 +34,9 @@ int CLAppConn::start() {
     if (!accesspoint) {
         if(stationCount > 0) {
             // We have a list to scan
-            Serial.println("Scanning local Wifi Networks");
+            ESP_LOGI(tag,"Scanning local Wifi Networks");
             int stationsFound = WiFi.scanNetworks();
-            Serial.printf("%i networks found\r\n", stationsFound);
+            ESP_LOGI(tag,"%i networks found", stationsFound);
             if (stationsFound > 0) {
                 for (int i = 0; i < stationsFound; ++i) {
                     // Print SSID and RSSI for each network found
@@ -65,24 +65,24 @@ int CLAppConn::start() {
         } 
 
         if (bestStation == -1 ) {
-            Serial.println("No known networks found, entering AccessPoint fallback mode");
+            ESP_LOGW(tag,"No known networks found, entering AccessPoint fallback mode");
             accesspoint = true;
         } 
         else {
-            Serial.printf("Connecting to Wifi Network %d: [%02X:%02X:%02X:%02X:%02X:%02X] %s \r\n",
+            ESP_LOGI(tag,"Connecting to Wifi Network %d: [%02X:%02X:%02X:%02X:%02X:%02X] %s \r\n",
                         bestStation, bestBSSID[0], bestBSSID[1], bestBSSID[2], bestBSSID[3],
                         bestBSSID[4], bestBSSID[5], bestSSID);
             // Apply static settings if necesscary
             if (dhcp == false) {
 
                 if(staticIP.ip && staticIP.gateway  && staticIP.netmask) {
-                    Serial.println("Applying static IP settings");
+                    ESP_LOGI(tag,"Applying static IP settings");
                     dhcp = false;
                     WiFi.config(*staticIP.ip, *staticIP.gateway, *staticIP.netmask, *staticIP.dns1, *staticIP.dns2);
                 }
                 else {
                     dhcp = true;
-                    Serial.println("Static IP settings requested but not defined properly in config, falling back to dhcp");
+                    ESP_LOGW(tag,"Static IP settings requested but not defined properly in config, falling back to dhcp");
                 }    
             }
 
@@ -108,7 +108,7 @@ int CLAppConn::start() {
                 Serial.printf("Gateway   : %s\r\n",WiFi.gatewayIP().toString());
 
             } else {
-                Serial.println("WiFi connection failed");
+                ESP_LOGW(tag,"WiFi connection failed");
                 WiFi.disconnect();   // (resets the WiFi scan)
                 return wifiStatus();
             }
@@ -132,10 +132,10 @@ int CLAppConn::start() {
         // User has specified the AP details; apply them after a short delay
         // (https://github.com/espressif/arduino-esp32/issues/985#issuecomment-359157428)
         if(WiFi.softAPConfig(*apIP.ip, *apIP.ip, *apIP.netmask)) {
-            Serial.printf("IP address: %s\r\n",WiFi.softAPIP().toString());
+            ESP_LOGI(tag,"IP address: %s",WiFi.softAPIP().toString());
         }
         else {
-            Serial.println("softAPConfig failed");
+            ESP_LOGW(tag,"softAPConfig failed");
             ap_status = WL_CONNECT_FAILED;
             return wifiStatus();
         }
@@ -143,17 +143,17 @@ int CLAppConn::start() {
         // WiFi.softAPsetHostname(mdnsName);
 
         if(!WiFi.softAP(apName, apPass, ap_channel)) {
-            Serial.println("Access Point init failed!");
+            ESP_LOGE(tag,"Access Point init failed!");
             ap_status = WL_CONNECT_FAILED;
             return wifiStatus();
         }       
         
         ap_status = WL_CONNECTED;
-        Serial.println("Access Point init successful");
+        ESP_LOGI(tag,"Access Point init successful");
 
         // Start the DNS captive portal if requested
         if (ap_dhcp) {
-            Serial.println("Starting Captive Portal");
+            ESP_LOGI(tag,"Starting Captive Portal");
             dnsServer.start(DNS_PORT, "*", *apIP.ip);
             captivePortal = true;
         }
@@ -201,7 +201,7 @@ int CLAppConn::loadPrefs() {
     ret = json_obj_get_string(&jctx, (char*)"mdns_name", mdnsName, sizeof(mdnsName));
 
     if(ret != OS_SUCCESS)
-        Serial.println("MDNS Name is not defined!");
+        ESP_LOGW(tag,"MDNS Name is not defined!");
 
     if(ret == OS_SUCCESS) {
         json_obj_get_string(&jctx, (char*)"host_name", hostName, sizeof(hostName));
@@ -294,7 +294,7 @@ int CLAppConn::loadPrefs() {
 void CLAppConn::setStaticIP (IPAddress ** ip_address, const char * strval) {
     if(!*ip_address) *ip_address = new IPAddress();
     if(!(*ip_address)->fromString(strval)) {
-            Serial.print(strval); Serial.println(" is invalid IP address");
+            ESP_LOGW(tag,"%s is invalid IP address", strval);
     }
 }
 
@@ -310,9 +310,9 @@ int CLAppConn::savePrefs() {
     char * prefs_file = getPrefsFileName(true); 
 
     if (Storage.exists(prefs_file)) {
-        Serial.printf("Updating %s\r\n", prefs_file);
+        ESP_LOGI(tag,"Updating %s\r\n", prefs_file);
     } else {
-        Serial.printf("Creating %s\r\n", prefs_file);
+        ESP_LOGI(tag,"Creating %s\r\n", prefs_file);
     }
 
     char buf[1024];
@@ -393,11 +393,11 @@ int CLAppConn::savePrefs() {
     if(file) {
         file.print(buf);
         file.close();
-        Serial.printf("File %s updated\r\n", prefs_file);
+        ESP_LOGI(tag,"File %s updated", prefs_file);
         return OK;
     }
     else {
-        Serial.printf("Failed to save connection preferences to file %s\r\n", prefs_file);
+        ESP_LOGW(tag,"Failed to save connection preferences to file %s", prefs_file);
         return FAIL;
     }
     return OS_SUCCESS;
@@ -407,7 +407,7 @@ void CLAppConn::startOTA() {
     // Set up OTA
 
     if(otaEnabled) {
-        Serial.println("Setting up OTA");
+        ESP_LOGI(tag,"Setting up OTA");
         // Port defaults to 3232
         // ArduinoOTA.setPort(3232);
         // Hostname defaults to esp3232-[MAC]
@@ -415,10 +415,10 @@ void CLAppConn::startOTA() {
 
         if (strlen(otaPassword) != 0) {
             ArduinoOTA.setPassword(otaPassword);
-            Serial.printf("OTA Password: %s\n\r", otaPassword);
+            ESP_LOGI(tag,"OTA Password: %s", otaPassword);
         } 
         else {
-            Serial.printf("\r\nNo OTA password has been set! (insecure)\r\n\r\n");
+            ESP_LOGW(tag,"No OTA password has been set! (insecure)");
         }
         
         ArduinoOTA
@@ -454,11 +454,11 @@ void CLAppConn::startOTA() {
             });
 
         ArduinoOTA.begin();
-        Serial.println("OTA is enabled");
+        ESP_LOGI(tag,"OTA is enabled");
     }
     else {
         ArduinoOTA.end();
-        Serial.println("OTA is disabled");
+        ESP_LOGI(tag,"OTA is disabled");
     }
 
 }
@@ -467,14 +467,14 @@ void CLAppConn::configMDNS() {
 
     // if(!otaEnabled) {
     if (!MDNS.begin(mdnsName)) {
-        Serial.println("Error setting up MDNS responder!");
+        ESP_LOGW(tag,"Error setting up MDNS responder!");
     }
     else
-        Serial.println("mDNS responder started");
+        ESP_LOGI(tag,"mDNS responder started");
     // }
     //MDNS Config -- note that if OTA is NOT enabled this needs prior steps!
     MDNS.addService("http", "tcp", httpPort);
-    Serial.println("Added HTTP service to MDNS server");
+    ESP_LOGI(tag,"Added HTTP service to MDNS server");
 
 }
 

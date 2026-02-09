@@ -76,7 +76,7 @@ int CLAppCam::start() {
 }
 
 int CLAppCam::stop() {
-    Serial.println("Stopping Camera");
+    ESP_LOGI(tag,"Stopping Camera");
     return esp_camera_deinit();
 }
 
@@ -130,7 +130,7 @@ int CLAppCam::loadPrefs() {
             setDebugMode(dbg);   
     }
     else {
-        Serial.println("Failed to get camera handle. Camera settings skipped");
+        ESP_LOGW(tag,"Failed to get camera handle. Camera settings skipped");
     }
   
     // close the file
@@ -141,12 +141,7 @@ int CLAppCam::loadPrefs() {
 int CLAppCam::savePrefs(){
     char * prefs_file = getPrefsFileName(true); 
 
-    if (Storage.exists(prefs_file)) {
-        Serial.print("Updating "); 
-    } else {
-        Serial.print("Creating ");
-    }
-    Serial.println(prefs_file);
+    ESP_LOGI(tag,"%s %s",Storage.exists(prefs_file)?"Updating":"Creating", prefs_file); 
     
     char buf[CAM_DUMP_BUFFER_SIZE];
     json_gen_str_t jstr;
@@ -165,7 +160,7 @@ int CLAppCam::savePrefs(){
         return OK;
     }
     else {
-        Serial.print("Failed to save camera preferences to file "); Serial.println(prefs_file);
+        ESP_LOGW(tag,"Failed to save camera preferences to file %s", prefs_file);
         return FAIL;
     }
 

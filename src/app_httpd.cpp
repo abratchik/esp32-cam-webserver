@@ -2,9 +2,9 @@
 
 CLAppHttpd::CLAppHttpd() {
     // Gather static values used when dumping status; these are slow functions, so just do them once during startup
-    sketchSize = ESP.getSketchSize();;
-    sketchSpace = ESP.getFreeSketchSpace();
-    sketchMD5 = ESP.getSketchMD5();
+    _sketchSize = ESP.getSketchSize();;
+    _sketchSpace = ESP.getFreeSketchSpace();
+    _sketchMD5 = ESP.getSketchMD5();
     setTag("httpd");
 #ifdef CAMERA_MODEL_AI_THINKER
     setPrefix("aithinker");
@@ -12,7 +12,7 @@ CLAppHttpd::CLAppHttpd() {
 }
 
 void IRAM_ATTR onSnapTimer(TimerHandle_t pxTimer){
-    AppHttpd.snapToStream();
+    AppHttpd.snapFrame();
 }
 
 int CLAppHttpd::start() {
@@ -66,7 +66,7 @@ int CLAppHttpd::start() {
     });
 
     // adding fixed mappigs
-    for(int i=0; i<mappingCount; i++) {
+    for(int i=0; i<_mappingCount; i++) {
         server->serveStatic(mappingList[i]->uri, Storage.getFS(), mappingList[i]->path).setAuthentication(AppConn.getUser(), AppConn.getPwd());
     }
 
@@ -80,18 +80,16 @@ int CLAppHttpd::start() {
     ws->onEvent(onWsEvent);
     server->addHandler(ws);  
 
-    snap_timer = xTimerCreate("SnapTimer", 1000/AppCam.getFrameRate()/portTICK_PERIOD_MS, pdTRUE, 0, onSnapTimer);
+    _stream_timer = xTimerCreate("SnapTimer", 1000/AppCam.getFrameRate()/portTICK_PERIOD_MS, pdTRUE, 0, onSnapTimer);
 
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
     server->begin();
 
-    if(isDebugMode()) {
-        Serial.printf("\r\nUse '%s' to connect\r\n", AppConn.getHTTPUrl());
-        Serial.printf("Stream viewer available at '%sview?mode=stream'\r\n", AppConn.getHTTPUrl());
-        // Serial.printf("Raw stream URL is '%s'\r\n", AppConn.getStreamUrl());
-    }
+
+    ESP_LOGD(tag,"Use '%s' to connect", AppConn.getHTTPUrl());
+    ESP_LOGD(tag, "Stream viewer available at '%sview?mode=stream'", AppConn.getHTTPUrl());
     
-    Serial.println("HTTP server started");
+    ESP_LOGI(tag, "HTTP server started");
     return OK;
 }
 
@@ -99,10 +97,10 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
     
 
     if(type == WS_EVT_CONNECT){
-        Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
+        ESP_LOGI(AppHttpd.getTag(), "ws[%s][%u] connect", server->url(), client->id());
     }
     else if(type == WS_EVT_DISCONNECT){
-        Serial.printf("ws[%s][%u] disconnect\n", server->url(), client->id());
+        ESP_LOGI(AppHttpd.getTag(),"ws[%s][%u] disconnect", server->url(), client->id());
         AppHttpd.stopStream(client->id());        
         if(AppHttpd.getControlClient() == client->id()) {
             AppHttpd.setControlClient(0);
@@ -111,10 +109,10 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
         }
     }
     else if(type == WS_EVT_ERROR){
-        Serial.printf("ws[%s][%u] error(%u): %s\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
+        ESP_LOGE(AppHttpd.getTag(),"ws[%s][%u] error(%u): %s", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
     }
     else if(type == WS_EVT_PONG){
-        Serial.printf("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len, (len)?(char*)data:"");
+        ESP_LOGE(AppHttpd.getTag(),"ws[%s][%u] pong[%u]: %s", server->url(), client->id(), len, (len)?(char*)data:"");
     }
     else if(type == WS_EVT_DATA){
         AwsFrameInfo * info = (AwsFrameInfo*)arg;
@@ -147,8 +145,8 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
                         else
                             value = *(msg+4);
 
-                        if(AppHttpd.isDebugMode())
-                            Serial.printf("vlen %d nparams %d value %d\r\n", vlen, nparams, value);
+
+                        ESP_LOGD(AppHttpd.getTag(),"vlen %d nparams %d value %d", vlen, nparams, value);
 
                         if(nparams == 1)
                             AppHttpd.writePWM(pin, value); // write to servo
@@ -160,6 +158,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
                 AppHttpd.stopStream(client->id());
                 break;
             default:
+            #if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
                 Serial.printf("ws[%s] client[%u] frame[%u] %u %s[%llu - %llu]: ", server->url(), client->id(), info->num,
                     info->message_opcode, (info->message_opcode == WS_TEXT)?"text":"binary", info->index, info->index + len);
                 for(int i=0; i< len; i++) {
@@ -167,6 +166,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
                     msg++;
                 }
                 Serial.println();
+            #endif
                 break;
         }
 
@@ -191,87 +191,77 @@ String processor(const String& var) {
 }
 
 
-int IRAM_ATTR CLAppHttpd::snapToStream(bool debug) {
-    if (ws->availableForWriteAll()) {
-        int res = AppCam.snapToBuffer();
+int IRAM_ATTR CLAppHttpd::snapFrame(bool debug) {
+    int res = AppCam.snapToBuffer();
 
-        if(!res) {
+    if(!res) {
 
-            if(AppCam.isJPEGinBuffer()){
+        if(AppCam.isJPEGinBuffer()){
+            ws->binaryAll( AppCam.getBuffer(), AppCam.getBufferSize());
 
-                ws->binaryAll( AppCam.getBuffer(), AppCam.getBufferSize());
-
-            } else {
-
-                res = OS_FAIL;
-            }
+        } else {
+            res = OS_FAIL;
         }
-
-        AppCam.releaseBuffer();
-        return res;
     }
 
-    return ESP_OK;
+    AppCam.releaseBuffer();
+    return res;
 }
 
 StreamResponseEnum CLAppHttpd::startStream(uint32_t id, CaptureModeEnum streammode) {
     
     // if video stream requested, check if we can add extra
     if(streammode == CAPTURE_STREAM) {
-        if(streamCount+1 > max_streams) return STREAM_NUM_EXCEEDED;
+        if(_streamCount+1 > _max_streams) return STREAM_NUM_EXCEEDED;
         if(addStreamClient(id) != OS_SUCCESS) return STREAM_CLIENT_REGISTER_FAILED;
     }
 
-    if(!snap_timer) return STREAM_TIMER_NOT_INITIALIZED;
+    if(!_stream_timer) return STREAM_TIMER_NOT_INITIALIZED;
 
     if(streammode == CAPTURE_STREAM) {
 
 
-        Serial.print("Stream start, frame period = "); Serial.println(xTimerGetPeriod(snap_timer));
+        ESP_LOGI(AppHttpd.getTag(),"Stream start, frame period = %d", xTimerGetPeriod(_stream_timer));
         
         // if stream is not started, start 
-        if(xTimerIsTimerActive(snap_timer) == pdFALSE) {
-            if(lampVal>=0 && autoLamp){
-                setLamp(flashLamp);
-                delay(75); // coupled with the status led flash this gives ~150ms for lamp to settle.
-            }
-            vTimerSetReloadMode(snap_timer, pdTRUE);
-            if(xTimerStart(snap_timer, 0) == pdPASS)
-                Serial.println("Stream timer started");
+        if(xTimerIsTimerActive(_stream_timer) == pdFALSE) {
+            vTimerSetReloadMode(_stream_timer, pdTRUE);
+            if(xTimerStart(_stream_timer, 0) == pdPASS)
+                ESP_LOGI(AppHttpd.getTag(),"Stream timer started");
             else
-                Serial.println("Failed to start the Stream timer!");
+                ESP_LOGW(AppHttpd.getTag(),"Failed to start the Stream timer!");
         }
 
-        streamCount++;
+        _streamCount++;
 
     }
     else if(streammode == CAPTURE_STILL) {
-        Serial.println("Still image requested");
+        ESP_LOGI(tag,"Still image requested");
         // if video stream is not active, take the picture as usual
-        if(xTimerIsTimerActive(snap_timer) == pdFALSE) {
-            if(lampVal>=0 && autoLamp){
-                setLamp(flashLamp);
-                delay(75); // coupled with the status led flash this gives ~150ms for lamp to settle.
+        if(xTimerIsTimerActive(_stream_timer) == pdFALSE) {
+            if(_lampVal>=0 && _autoLamp){
+                setLamp(_flashLamp);
+                delay(150); // coupled with the status led flash this gives ~150ms for lamp to settle.
             }
 
             int64_t fr_start = esp_timer_get_time();
         
-            if (snapToStream(isDebugMode()) != OS_SUCCESS) {
-                if(autoLamp) setLamp(0);
+            if (snapFrame(isDebugMode()) != OS_SUCCESS) {
+                if(_autoLamp) setLamp(0);
                 return STREAM_IMAGE_CAPTURE_FAILED;
             }
-            
-            if (isDebugMode()) {
-                int64_t fr_end = esp_timer_get_time();
-                Serial.printf("B %ums\r\n", (uint32_t)((fr_end - fr_start)/1000));
-            }
+        
+        #if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
+            int64_t fr_end = esp_timer_get_time();
+            ESP_LOGD(AppHttpd.getTag(),"B %ums", (uint32_t)((fr_end - fr_start)/1000));
+        #endif
 
-            if(autoLamp) setLamp(0);
-            imagesServed++;
+            if(_autoLamp) setLamp(0);
+            _imagesServed++;
             
         }
         else {
-            Serial.println("Image to be taken from the parallel video stream");
+            ESP_LOGI(tag, "Image to be taken from the parallel video stream");
         }
         
     }
@@ -285,23 +275,23 @@ StreamResponseEnum CLAppHttpd::stopStream(uint32_t id) {
 
     if(removeStreamClient(id) != OS_SUCCESS) return STREAM_CLIENT_NOT_FOUND;
 
-    if(!snap_timer) return STREAM_TIMER_NOT_INITIALIZED;
+    if(!_stream_timer) return STREAM_TIMER_NOT_INITIALIZED;
     
     // if the stream is the last one active, stop the timer
-    if(xTimerIsTimerActive(snap_timer) != pdFALSE && streamCount == 1) {
-        vTimerSetReloadMode(snap_timer, pdFALSE);
-        if(xTimerStop(snap_timer, 0) == pdPASS)
-            Serial.println("Stop sent to Stream timer");
+    if(xTimerIsTimerActive(_stream_timer) != pdFALSE && _streamCount == 1) {
+        vTimerSetReloadMode(_stream_timer, pdFALSE);
+        if(xTimerStop(_stream_timer, 0) == pdPASS)
+            ESP_LOGI(AppHttpd.getTag(),"Stop sent to Stream timer");
         else
-            Serial.println("Failed to post the stop command to the Stream timer!");
+            ESP_LOGW(AppHttpd.getTag(),"Failed to post the stop command to the Stream timer!");
 
-        if(lampVal>0 and autoLamp) setLamp(0);     
+        if(_lampVal>0 and _autoLamp) setLamp(0);     
     }
     
-    streamsServed++;
-    streamCount--;
+    _streamsServed++;
+    _streamCount--;
     
-    Serial.println("Stream stopped");
+    ESP_LOGI(AppHttpd.getTag(),"Stream stopped");
     return STREAM_SUCCESS;
 }
 
@@ -320,20 +310,20 @@ void onControl(AsyncWebServerRequest *request) {
     String variable = request->arg("var");
     String value = request->arg("val");
 
-    if(AppHttpd.isDebugMode()) {
-        Serial.print("Command: var="); Serial.print(variable); 
-        Serial.print(", val="); Serial.println(value);
-    }
+#if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
+    Serial.print("Command: var="); Serial.print(variable); 
+    Serial.print(", val="); Serial.println(value);
+#endif
 
     int res = 0;
     long val = value.toInt();
     sensor_t * s = AppCam.getSensor();
 
     if(variable == "cmdout") {
-        if(AppHttpd.isDebugMode()) {
-            Serial.print("cmdout=");
-            Serial.println(value.c_str());
-        }
+    #if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
+        Serial.print("cmdout=");
+        Serial.println(value.c_str());
+    #endif
         AppHttpd.serialSendCommand(value.c_str());
         request->send(200);
         return;
@@ -379,7 +369,7 @@ void onControl(AsyncWebServerRequest *request) {
         periph_module_disable(PERIPH_I2C1_MODULE);
         periph_module_reset(PERIPH_I2C0_MODULE);
         periph_module_reset(PERIPH_I2C1_MODULE);
-        Serial.print("REBOOT requested");
+        ESP_LOGI(AppHttpd.getTag(),"REBOOT requested");
         while(true) {
           delay(200);
           Serial.print('.');
@@ -433,7 +423,7 @@ void onControl(AsyncWebServerRequest *request) {
     else if(variable ==  "rotate") AppCam.setRotation(val);
     else if(variable ==  "frame_rate") {
         AppCam.setFrameRate(val);
-        AppHttpd.updateSnapTimer(val);
+        AppHttpd.setFrameRate(val);
     }
     else if(variable ==  "autolamp" && AppHttpd.getLamp() != -1) {
         AppHttpd.setAutoLamp(val);
@@ -462,9 +452,9 @@ void onControl(AsyncWebServerRequest *request) {
     request->send(200);
 }
 
-void CLAppHttpd::updateSnapTimer(int tps) {
-    if(snap_timer)
-        xTimerChangePeriod(snap_timer, 1000/tps/portTICK_PERIOD_MS, 100);
+void CLAppHttpd::setFrameRate(int tps) {
+    if(_stream_timer)
+        xTimerChangePeriod(_stream_timer, 1000/tps/portTICK_PERIOD_MS, 100);
 }
 
 void onInfo(AsyncWebServerRequest *request) {
@@ -498,11 +488,11 @@ void onSystemStatus(AsyncWebServerRequest *request) {
     
     response->print(buf);
 
-    if(AppHttpd.isDebugMode()) {
-        Serial.println();
-        Serial.println("Dump requested through web");
-        Serial.println(buf);
-    }
+#if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
+    Serial.println();
+    Serial.println("Dump requested through web");
+    Serial.println(buf);
+#endif
 
     request->send(response);
 }
@@ -637,10 +627,10 @@ int CLAppHttpd::loadPrefs() {
         return ret;
     }
     
-    json_obj_get_int(&jctx, (char*)"lamp", &lampVal);
-    json_obj_get_bool(&jctx, (char*)"autolamp", &autoLamp);
-    json_obj_get_int(&jctx, (char*)"flashlamp", &flashLamp);
-    json_obj_get_int(&jctx, (char*)"max_streams", &max_streams);
+    json_obj_get_int(&jctx, (char*)"lamp", &_lampVal);
+    json_obj_get_bool(&jctx, (char*)"autolamp", &_autoLamp);
+    json_obj_get_int(&jctx, (char*)"flashlamp", &_flashLamp);
+    json_obj_get_int(&jctx, (char*)"max_streams", &_max_streams);
 
     int count = 0, pin = 0, freq = 0, resolution = 0, def_val = 0;
 
@@ -654,10 +644,10 @@ int CLAppHttpd::loadPrefs() {
                     int index = attachPWM(pin, freq, resolution);
                     delay(75); // let the PWM settle
                     if(index >= 0) {
-                        if(lampVal >= 0 && i == 0) {
-                            lamppin = pin;
-                            pwmMax = pow(2, resolution)-1;
-                            Serial.printf("Flash lamp activated on pin %d\r\n", lamppin);
+                        if(_lampVal >= 0 && i == 0) {
+                            _lamppin = pin;
+                            _pwmMax = pow(2, resolution)-1;
+                            ESP_LOGI(tag,"Flash lamp activated on pin %d", _lamppin);
                         }
 
                         if(json_obj_get_int(&jctx, (char*)"default", &def_val) == OS_SUCCESS)  {
@@ -666,7 +656,7 @@ int CLAppHttpd::loadPrefs() {
                         }
                     }
                     else
-                        Serial.printf("Failed to attach PWM to pin %d\r\n", pin);
+                        ESP_LOGW(tag,"Failed to attach PWM to pin %d", pin);
                 }
                 json_arr_leave_object(&jctx);
             }
@@ -675,9 +665,9 @@ int CLAppHttpd::loadPrefs() {
     }
     
 
-    if (json_obj_get_array(&jctx, (char*)"mapping", &mappingCount) == OS_SUCCESS) {
+    if (json_obj_get_array(&jctx, (char*)"mapping", &_mappingCount) == OS_SUCCESS) {
 
-        for(int i=0; i < mappingCount && i < MAX_URI_MAPPINGS; i++) {
+        for(int i=0; i < _mappingCount && i < MAX_URI_MAPPINGS; i++) {
             if(json_arr_get_object(&jctx, i) == OS_SUCCESS) {
                 UriMapping *um = (UriMapping*) malloc(sizeof(UriMapping));
                 if(json_obj_get_string(&jctx, (char*)"uri", um->uri, sizeof(um->uri)) == OS_SUCCESS &&
@@ -711,14 +701,14 @@ int CLAppHttpd::savePrefs() {
     
     json_gen_obj_set_string(&jstr, (char*)"my_name", myName);
 
-    json_gen_obj_set_int(&jstr, (char*)"lamp", lampVal);
-    json_gen_obj_set_bool(&jstr, (char*)"autolamp", autoLamp);
-    json_gen_obj_set_int(&jstr, (char*)"flashlamp", flashLamp);
-    json_gen_obj_set_int(&jstr, (char*)"max_streams", max_streams);
+    json_gen_obj_set_int(&jstr, (char*)"lamp", _lampVal);
+    json_gen_obj_set_bool(&jstr, (char*)"autolamp", _autoLamp);
+    json_gen_obj_set_int(&jstr, (char*)"flashlamp", _flashLamp);
+    json_gen_obj_set_int(&jstr, (char*)"max_streams", _max_streams);
 
-    if(pwmCount > 0) {
+    if(_pwmCount > 0) {
         json_gen_push_array(&jstr, (char*)"pwm");
-        for(int i=0; i < pwmCount; i++) 
+        for(int i=0; i < _pwmCount; i++) 
             if(pwm[i]) {
                 json_gen_start_object(&jstr);
                 json_gen_obj_set_int(&jstr, (char*)"pin", pwm[i]->getPin());
@@ -732,9 +722,9 @@ int CLAppHttpd::savePrefs() {
         json_gen_pop_array(&jstr);
     }
 
-    if(mappingCount > 0) {
+    if(_mappingCount > 0) {
         json_gen_push_array(&jstr, (char*)"mapping");
-        for(int i=0; i < mappingCount; i++) {
+        for(int i=0; i < _mappingCount; i++) {
             json_gen_start_object(&jstr);
             json_gen_obj_set_string(&jstr, (char*)"uri", mappingList[i]->uri);
             json_gen_obj_set_string(&jstr, (char*)"path", mappingList[i]->path);
@@ -754,27 +744,27 @@ int CLAppHttpd::savePrefs() {
         return OK;
     }
     else {
-        Serial.printf("Failed to save web server preferences to file %s\r\n", prefs_file);
+        ESP_LOGW(tag,"Failed to save web server preferences to file %s", prefs_file);
         return FAIL;
     }
 }
 
 int CLAppHttpd::attachPWM(uint8_t pin, double freq, uint8_t resolution_bits) {
 
-    if(pwmCount >= NUM_PWM) {
-        Serial.println("Number of available PWM channels exceeded");
+    if(_pwmCount >= NUM_PWM) {
+        ESP_LOGW(tag,"Number of available PWM channels exceeded");
         return OS_FAIL;
     }
 
-    for(int i=0; i<pwmCount; i++) 
+    for(int i=0; i<_pwmCount; i++) 
         if(pwm[i]->getPin() == pin) {
-            Serial.printf("Pin %d already utilized\r\n");
+            ESP_LOGW(tag,"Pin %d already utilized");
             return OS_FAIL; // pin already used
         }
 
     ESP32PWM * newpwm = new ESP32PWM();
     if(!newpwm) {
-        Serial.println("Failed to create PWM"); 
+        ESP_LOGW(tag,"Failed to create PWM"); 
         delete newpwm;
         return OS_FAIL;
     }
@@ -782,23 +772,23 @@ int CLAppHttpd::attachPWM(uint8_t pin, double freq, uint8_t resolution_bits) {
     newpwm->attachPin(pin, freq, resolution_bits);
 
     if(!newpwm->attached()) {
-        Serial.print("Failed to attach PWM on pin "); Serial.println(pin);
+        ESP_LOGW(tag,"Failed to attach PWM on pin %d", pin);
         delete newpwm;
         return OS_FAIL;
     }
 
-    Serial.printf("Created a new PWM channel %d on pin %d (freq=%.2f, bits=%d)\r\n", 
+    ESP_LOGI(tag,"Created a new PWM channel %d on pin %d (freq=%.2f, bits=%d)", 
         newpwm->getChannel(), pin, freq, resolution_bits);
 
-    pwm[pwmCount] = newpwm;
+    pwm[_pwmCount] = newpwm;
 
-    pwmCount++;
+    _pwmCount++;
 
-    return pwmCount - 1; 
+    return _pwmCount - 1; 
 }
 
 int CLAppHttpd::writePWM(uint8_t pin, int value, int min_v, int max_v) {
-    for(int i=0; i<pwmCount; i++) {
+    for(int i=0; i<_pwmCount; i++) {
         if(pwm[i] && pwm[i]->getPin() == pin) {
             if(pwm[i]->attached()) {
                 if(min_v > 0) {
@@ -823,25 +813,24 @@ int CLAppHttpd::writePWM(uint8_t pin, int value, int min_v, int max_v) {
 
                 }
                 // do the actual write
-                if(isDebugMode())
-                    Serial.printf("Write %d to PWM channel %d pin %d min %d max %d\r\n", 
-                                  value, pwm[i]->getChannel(), pwm[i]->getPin(), min_v, max_v);
+                ESP_LOGD(tag,"Write %d to PWM channel %d pin %d min %d max %d", 
+                         value, pwm[i]->getChannel(), pwm[i]->getPin(), min_v, max_v);
                 pwm[i]->write(value);
                 return OS_SUCCESS;
             }
             else {
-                Serial.printf("PWM write failed: pin %d is not attached", pin);
+                ESP_LOGW(tag,"PWM write failed: pin %d is not attached", pin);
                 return OS_FAIL;    
             }
         }
     }
     
-    Serial.printf("PWM write failed: pin %d is not found", pin);
+    ESP_LOGW(tag,"PWM write failed: pin %d is not found", pin);
     return OS_FAIL;
 }
 
 void CLAppHttpd::resetPWM(uint8_t pin) {
-    for(int i=0; i<pwmCount; i++) {
+    for(int i=0; i<_pwmCount; i++) {
         if(pwm[i]->getPin() == pin || pin == RESET_ALL_PWM)
             pwm[i]->reset();
     }
@@ -852,20 +841,20 @@ void CLAppHttpd::resetPWM(uint8_t pin) {
 void CLAppHttpd::setLamp(int newVal) {
 
     if(newVal == DEFAULT_FLASH) {
-        newVal = flashLamp;
+        newVal = _flashLamp;
     }
-    lampVal = newVal;
+    _lampVal = newVal;
     
     // Apply a logarithmic function to the scale.
-    if(lamppin) {
-        int brightness = round(lampVal * pwmMax/100.00);
-        writePWM(lamppin, brightness,0);
+    if(_lamppin) {
+        int brightness = round(_lampVal * _pwmMax/100.00);
+        writePWM(_lamppin, brightness,0);
     }
 
 }
 
 int CLAppHttpd::addStreamClient(uint32_t client_id) {
-    for(int i=0; i < max_streams; i++) {
+    for(int i=0; i < _max_streams; i++) {
         if(!stream_clients[i]) {
             stream_clients[i] = client_id;
             return OS_SUCCESS;
@@ -875,7 +864,7 @@ int CLAppHttpd::addStreamClient(uint32_t client_id) {
 }
 
 int CLAppHttpd::removeStreamClient(uint32_t client_id) {
-    for(int i=0; i < max_streams; i++) {
+    for(int i=0; i < _max_streams; i++) {
         if(stream_clients[i] ==  client_id) {
             stream_clients[i] = 0;
             return OS_SUCCESS;

@@ -11,6 +11,8 @@
 #include "app_conn.h"
 #include "app_cam.h"
 
+#include <esp_log.h>
+
 #define MAX_URI_MAPPINGS                32
 
 #define PWM_DEFAULT_FREQ                50
@@ -26,7 +28,6 @@
 #define SERIAL_BUFFER_SIZE              64
 
 #define MAX_VIDEO_STREAMS               5
-
 
 enum CaptureModeEnum {CAPTURE_STILL, CAPTURE_STREAM};
 enum StreamResponseEnum {STREAM_SUCCESS, 
@@ -73,44 +74,45 @@ class CLAppHttpd : public CLAppComponent {
         int addStreamClient(uint32_t client_id);
         int removeStreamClient(uint32_t client_id);
 
-        uint32_t getControlClient() {return control_client;};
-        void setControlClient(uint32_t id) {control_client = id;};
+        uint32_t getControlClient() {return _control_client;};
+        void setControlClient(uint32_t id) {_control_client = id;};
 
-        int8_t getStreamCount() {return streamCount;};
-        long getStreamsServed() {return streamsServed;};
-        unsigned long getImagesServed() {return imagesServed;};
-        int getPwmCount() {return pwmCount;};
-        void incImagesServed(){imagesServed++;};
+        int8_t getStreamCount() {return _streamCount;};
+        long getStreamsServed() {return _streamsServed;};
+        unsigned long getImagesServed() {return _imagesServed;};
+        int getPwmCount() {return _pwmCount;};
+        void incImagesServed(){_imagesServed++;};
         
-        // capture image and send it to the clients
-        int snapToStream(bool debug = false);
+        // capture a frame and send it to the clients
+        int snapFrame(bool debug = false);
+
         // start stream
         StreamResponseEnum startStream(uint32_t id, CaptureModeEnum stream_mode);
         //terminate stream
         StreamResponseEnum stopStream(uint32_t id);
 
-        void updateSnapTimer(int frameRate);
+        void setFrameRate(int frameRate);
 
         void serialSendCommand(const char * cmd);
 
-        int getSketchSize(){ return sketchSize;};
-        int getSketchSpace() {return sketchSpace;};
+        int getSketchSize(){ return _sketchSize;};
+        int getSketchSpace() {return _sketchSpace;};
         
-        const char * getSketchMD5() {return sketchMD5.c_str();};
+        const char * getSketchMD5() {return _sketchMD5.c_str();};
 
-        const char * getVersion() {return version.c_str();};
+        const char * getVersion() {return _version.c_str();};
 
         char * getName() {return myName;};
 
         char * getSerialBuffer() {return serialBuffer;};
 
-        void setAutoLamp(bool val) {autoLamp = val;};
-        bool isAutoLamp() { return autoLamp;};   
-        int getFlashLamp() {return flashLamp;}; 
-        void setFlashLamp(int newVal) {flashLamp = newVal;};
+        void setAutoLamp(bool val) {_autoLamp = val;};
+        bool isAutoLamp() { return _autoLamp;};   
+        int getFlashLamp() {return _flashLamp;}; 
+        void setFlashLamp(int newVal) {_flashLamp = newVal;};
 
         void setLamp(int newVal = DEFAULT_FLASH);
-        int getLamp() {return lampVal;};    
+        int getLamp() {return _lampVal;};    
 
         void dumpSystemStatusToJson(char * buf, size_t size);
         void dumpCameraStatusToJson(char * buf, size_t size, bool full = true);
@@ -148,11 +150,11 @@ class CLAppHttpd : public CLAppComponent {
     private:
 
         UriMapping *mappingList[MAX_URI_MAPPINGS]; 
-        int mappingCount=0;
+        int _mappingCount=0;
 
         ESP32PWM *pwm[NUM_PWM];
 
-        int pwmCount = 0;
+        int _pwmCount = 0;
 
         // Name of the application used in web interface
         // Can be re-defined in the httpd.json file
@@ -166,32 +168,32 @@ class CLAppHttpd : public CLAppComponent {
         // array of clients currently streaming video 
         uint32_t stream_clients[MAX_VIDEO_STREAMS];
 
-        uint32_t control_client;
+        uint32_t _control_client;
         
-        TimerHandle_t snap_timer = NULL;
+        TimerHandle_t _stream_timer = NULL;
         
         // Flash LED lamp parameters.
         // should be defined in the 1st line of the pwm collection in the httpd prefs (httpd.json)
-        bool autoLamp = false;         // Automatic lamp (auto on while camera running)
-        int lampVal = -1;              // Lamp brightness
-        int flashLamp = 80;            // Flash brightness when taking still images or capturing streams
-        uint8_t lamppin = 0;           // Lamp pin, not defined by default
-        int pwmMax = 1;                // pwmMax = pow(2,pwmresolution)-1;
+        bool _autoLamp = false;         // Automatic lamp (auto on while camera running)
+        int _lampVal = -1;              // Lamp brightness
+        int _flashLamp = 80;            // Flash brightness when taking still images or capturing streams
+        uint8_t _lamppin = 0;           // Lamp pin, not defined by default
+        int _pwmMax = 1;                // _pwmMax = pow(2,pwmresolution)-1;
 
-        int8_t streamCount=0;
+        int8_t _streamCount=0;
 
-        long streamsServed=0;
-        long imagesServed=0;
+        long _streamsServed=0;
+        long _imagesServed=0;
 
         // maximum number of parallel video streams supported. This number can range from 1 to MAX_VIDEO_STREAMS
-        int max_streams=2;
+        int _max_streams=2;
         
         // Sketch Info
-        int sketchSize ;
-        int sketchSpace ;
-        String sketchMD5;
+        int _sketchSize ;
+        int _sketchSpace ;
+        String _sketchMD5;
 
-        const String version = __DATE__ " @ " __TIME__;
+        const String _version = __DATE__ " @ " __TIME__;
 
 };
 

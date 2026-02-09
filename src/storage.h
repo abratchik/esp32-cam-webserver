@@ -25,6 +25,8 @@
 #define STORAGE_UNITS STORAGE_UNITS_MB
 #endif
 
+#include <esp_log.h>
+
 /**
  * @brief Storage Manager
  * Encapsulates access to the file system, which can be either external (SD card) or internal (LittleFS).
@@ -69,6 +71,8 @@ class CLStorage {
 #else
         fs::SDMMCFS * const fsStorage = &SD_MMC; 
 #endif
+
+        const char * tag = "storage"; 
 
 };
 

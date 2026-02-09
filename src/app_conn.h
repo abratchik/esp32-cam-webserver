@@ -12,6 +12,8 @@
 #include "app_component.h"
 #include "app_cam.h"
 
+#include <esp_log.h>
+
 #define MAX_KNOWN_STATIONS              5
 
 #define CREDENTIALS_SIZE                32

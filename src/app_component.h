@@ -38,7 +38,13 @@ class CLAppComponent {
 
         bool isConfigured() {return configured;};
 
+        const char* getTag() {return tag;};
+
     protected:
+        // prefix for forming preference file name of this class
+        const char * tag;   
+        const char * prefix;
+
         void setTag(const char *t) {tag = t;};
         void setPrefix(const char *p) {prefix = p;};
 
@@ -57,9 +63,6 @@ class CLAppComponent {
 
 
     private:
-        // prefix for forming preference file name of this class
-        const char * tag;   
-        const char * prefix;
 
         bool configured = false;
 

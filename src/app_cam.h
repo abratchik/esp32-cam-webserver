@@ -10,6 +10,8 @@
 #include "app_component.h"
 #include "camera_pins.h"
 
+#include <esp_log.h>
+
 
 /**
  * @brief Camera Manager
