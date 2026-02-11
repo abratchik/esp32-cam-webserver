@@ -43,6 +43,8 @@ class CLAppComponent {
         const char * tag;   
         const char * prefix;
 
+        bool configured = false;
+
         void setTag(const char *t) {tag = t;};
         void setPrefix(const char *p) {prefix = p;};
 
@@ -50,13 +52,13 @@ class CLAppComponent {
 
         int parsePrefs(JsonDocument *jctx);
 
+        int savePrefsToFile(JsonDocument *jctx);
+
         int urlDecode(char * decoded, char * source, size_t len); 
         int urlEncode(char * encoded, char * source, size_t len);
 
 
     private:
-
-        bool configured = false;
 
         // error code of the last error
         int last_err = 0;

@@ -1,0 +1,12 @@
+{
+    "username": "someone@somewhere.ru",
+    "password": "some_password",
+    "smtp_server": "smtp.somewhere.ru",
+    "smtp_port": 465,
+    "from_email": "From <from@somewhere.ru>",
+    "to_email": "To <to@somewhere.ru>",
+    "subject": "ESP32-CAM Alert",
+    "message": "Snapshot taken at %TIME%",
+    "html_message": "<h1>ESP32-CAM Alert</h1><p>Snapshot taken at %TIME%</p><img src=\"cid:snapshot.jpg\" />",  
+    "configured": false
+}

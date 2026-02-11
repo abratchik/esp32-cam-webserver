@@ -55,5 +55,14 @@
 // #define CAMERA_MODEL_ARDUCAM_ESP32S_UNO
 // #define CAMERA_MODEL_LILYGO_T_SIMCAM
 
+/*
+ * Optional Features
+ *
+ * Uncomment the lines below to enable the corresponding features.
+ * These are all optional, but may require additional configuration (e.g. mail server details for the mail feature)
+ */
+
+// #define ENABLE_MAIL_FEATURE  
+
 
 #endif

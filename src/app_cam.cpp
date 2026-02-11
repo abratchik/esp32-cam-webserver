@@ -89,8 +89,8 @@ int CLAppCam::loadPrefs() {
     }
 
     // process local settings    
-    frameRate = jdoc["frame_rate"];
-    xclk = jdoc["xclk"];
+    frameRate = jdoc[FPSTR(CAM_FRAME_RATE)];
+    xclk = jdoc[FPSTR(CAM_XCLK)];
     myRotation = jdoc["rotate"];
 
     // get sensor reference
@@ -98,33 +98,33 @@ int CLAppCam::loadPrefs() {
     JsonObject jctx = jdoc.as<JsonObject>();
     // process camera settings
     if(s) {
-        s->set_framesize(s, (framesize_t)jdoc["framesize"].as<int>());
-        s->set_quality(s, jdoc["quality"].as<int>());
+        s->set_framesize(s, (framesize_t)jdoc[FPSTR(CAM_FRAMESIZE)].as<int>());
+        s->set_quality(s, jdoc[FPSTR(CAM_QUALITY)].as<int>());
         s->set_xclk(s, LEDC_TIMER_0, xclk);
-        s->set_brightness(s, jdoc["brightness"].as<int>());
-        s->set_contrast(s, jdoc["contrast"].as<int>());
-        s->set_saturation(s, jdoc["saturation"].as<int>());
-        s->set_sharpness(s, jdoc[ "sharpness"].as<int>());
-        s->set_denoise(s, jdoc["denoise"].as<int>());
-        s->set_special_effect(s, jdoc["special_effect"].as<int>());
-        s->set_wb_mode(s, jdoc["wb_mode"].as<int>());
-        s->set_whitebal(s, jdoc["awb"].as<int>());
-        s->set_awb_gain(s, jdoc["awb_gain"].as<int>());
-        s->set_exposure_ctrl(s,jdoc["aec"].as<int>());
-        s->set_aec2(s, jdoc["aec2"].as<int>());
-        s->set_ae_level(s, jdoc["ae_level"].as<int>());
-        s->set_aec_value(s, jdoc["aec_value"].as<int>());
-        s->set_gain_ctrl(s, jdoc["agc"].as<int>());
-        s->set_agc_gain(s, jdoc["agc_gain"].as<int>());
-        s->set_gainceiling(s, (gainceiling_t)jdoc["gainceiling"].as<int>());
-        s->set_bpc(s, jdoc["bpc"].as<int>());
-        s->set_wpc(s, jdoc["wpc"].as<int>());
-        s->set_raw_gma(s, jdoc["raw_gma"].as<int>());
-        s->set_lenc(s, jdoc["lenc"].as<int>());
-        s->set_vflip(s, jdoc["vflip"].as<int>());
-        s->set_hmirror(s, jdoc["hmirror"].as<int>());
-        s->set_dcw(s, jdoc["dcw"].as<int>());
-        s->set_colorbar(s, jdoc["colorbar"].as<int>());
+        s->set_brightness(s, jdoc[FPSTR(CAM_BRIGHTNESS)].as<int>());
+        s->set_contrast(s, jdoc[FPSTR(CAM_CONTRAST)].as<int>());
+        s->set_saturation(s, jdoc[FPSTR(CAM_SATURATION)].as<int>());
+        s->set_sharpness(s, jdoc[ FPSTR(CAM_SHARPNESS)].as<int>());
+        s->set_denoise(s, jdoc[FPSTR(CAM_DENOISE)].as<int>());
+        s->set_special_effect(s, jdoc[FPSTR(CAM_SPECIAL_EFFECT)].as<int>());
+        s->set_wb_mode(s, jdoc[FPSTR(CAM_WB_MODE)].as<int>());
+        s->set_whitebal(s, jdoc[FPSTR(CAM_AWB)].as<int>());
+        s->set_awb_gain(s, jdoc[FPSTR(CAM_AWB_GAIN)].as<int>());
+        s->set_exposure_ctrl(s,jdoc[FPSTR(CAM_AEC)].as<int>());
+        s->set_aec2(s, jdoc[FPSTR(CAM_AEC2)].as<int>());
+        s->set_ae_level(s, jdoc[FPSTR(CAM_AE_LEVEL)].as<int>());
+        s->set_aec_value(s, jdoc[FPSTR(CAM_AEC_VALUE)].as<int>());
+        s->set_gain_ctrl(s, jdoc[FPSTR(CAM_AGC)].as<int>());
+        s->set_agc_gain(s, jdoc[FPSTR(CAM_AGC_GAIN)].as<int>());
+        s->set_gainceiling(s, (gainceiling_t)jdoc[FPSTR(CAM_GAINCEILING)].as<int>());
+        s->set_bpc(s, jdoc[FPSTR(CAM_BPC)].as<int>());
+        s->set_wpc(s, jdoc[FPSTR(CAM_WPC)].as<int>());
+        s->set_raw_gma(s, jdoc[FPSTR(CAM_RAW_GMA)].as<int>());
+        s->set_lenc(s, jdoc[FPSTR(CAM_LENC)].as<int>());
+        s->set_vflip(s, jdoc[FPSTR(CAM_VFLIP)].as<int>());
+        s->set_hmirror(s, jdoc[FPSTR(CAM_HMIRROR)].as<int>());
+        s->set_dcw(s, jdoc[FPSTR(CAM_DCW)].as<int>());
+        s->set_colorbar(s, jdoc[FPSTR(CAM_COLORBAR)].as<int>());
         
     }
     else {
@@ -136,25 +136,13 @@ int CLAppCam::loadPrefs() {
 }
 
 int CLAppCam::savePrefs(){
-    char * prefs_file = getPrefsFileName(true); 
-
-    ESP_LOGI(tag,"%s %s",Storage.exists(prefs_file)?"Updating":"Creating", prefs_file); 
 
     JsonDocument jdoc;
     JsonObject jstr = jdoc.to<JsonObject>();
 
     dumpStatusToJson(jstr);
 
-    File file = Storage.open(prefs_file, FILE_WRITE);
-    if(file) {
-        serializeJson(jdoc, file);
-        file.close();
-        return OK;
-    }
-    else {
-        ESP_LOGW(tag,"Failed to save camera preferences to file %s", prefs_file);
-        return FAIL;
-    }
+    return savePrefsToFile(&jdoc);
 
 }
 
@@ -179,40 +167,40 @@ void CLAppCam::dumpStatusToJson(JsonObject jstr, bool full_status) {
 
     sensor_t * s = esp_camera_sensor_get(); 
 
-    jstr["cam_pid"] = s->id.PID;
-    jstr["cam_ver"] = s->id.VER;
-    jstr["framesize"] = s->status.framesize;
-    jstr["frame_rate"] = frameRate;
+    jstr[FPSTR(CAM_PID)] = s->id.PID;
+    jstr[FPSTR(CAM_VER)] = s->id.VER;
+    jstr[FPSTR(CAM_FRAMESIZE)] = s->status.framesize;
+    jstr[FPSTR(CAM_FRAME_RATE)] = frameRate;
     
     if(!full_status) return;
 
-    jstr["quality"] = s->status.quality;
-    jstr["brightness"] = s->status.brightness;
-    jstr["contrast"] = s->status.contrast;
-    jstr["saturation"] = s->status.saturation;
-    jstr["sharpness"] = s->status.sharpness;
-    jstr["denoise"] = s->status.denoise;
-    jstr["special_effect"] = s->status.special_effect;
-    jstr["wb_mode"] = s->status.wb_mode;
-    jstr["awb"] = s->status.awb;
-    jstr["awb_gain"] = s->status.awb_gain;
-    jstr["aec"] = s->status.aec;
-    jstr["aec2"] = s->status.aec2;
-    jstr["ae_level"] = s->status.ae_level;
-    jstr["aec_value"] = s->status.aec_value;
-    jstr["agc"] = s->status.agc;
-    jstr["agc_gain"] = s->status.agc_gain;
-    jstr["gainceiling"] = s->status.gainceiling;
-    jstr["bpc"] = s->status.bpc;
-    jstr["wpc"] = s->status.wpc;
-    jstr["raw_gma"] = s->status.raw_gma;
-    jstr["lenc"] = s->status.lenc;
-    jstr["vflip"] = s->status.vflip;
-    jstr["hmirror"] = s->status.hmirror;
-    jstr["dcw"] = s->status.dcw;
-    jstr["colorbar"] = s->status.colorbar; 
+    jstr[FPSTR(CAM_QUALITY)] = s->status.quality;
+    jstr[FPSTR(CAM_BRIGHTNESS)] = s->status.brightness;
+    jstr[FPSTR(CAM_CONTRAST)] = s->status.contrast;
+    jstr[FPSTR(CAM_SATURATION)] = s->status.saturation;
+    jstr[FPSTR(CAM_SHARPNESS)] = s->status.sharpness;
+    jstr[FPSTR(CAM_DENOISE)] = s->status.denoise;
+    jstr[FPSTR(CAM_SPECIAL_EFFECT)] = s->status.special_effect;
+    jstr[FPSTR(CAM_WB_MODE)] = s->status.wb_mode;
+    jstr[FPSTR(CAM_AWB)] = s->status.awb;
+    jstr[FPSTR(CAM_AWB_GAIN)] = s->status.awb_gain;
+    jstr[FPSTR(CAM_AEC)] = s->status.aec;
+    jstr[FPSTR(CAM_AEC2)] = s->status.aec2;
+    jstr[FPSTR(CAM_AE_LEVEL)] = s->status.ae_level;
+    jstr[FPSTR(CAM_AEC_VALUE)] = s->status.aec_value;
+    jstr[FPSTR(CAM_AGC)] = s->status.agc;
+    jstr[FPSTR(CAM_AGC_GAIN)] = s->status.agc_gain;
+    jstr[FPSTR(CAM_GAINCEILING)] = s->status.gainceiling;
+    jstr[FPSTR(CAM_BPC)] = s->status.bpc;
+    jstr[FPSTR(CAM_WPC)] = s->status.wpc;
+    jstr[FPSTR(CAM_RAW_GMA)] = s->status.raw_gma;
+    jstr[FPSTR(CAM_LENC)] = s->status.lenc;
+    jstr[FPSTR(CAM_VFLIP)] = s->status.vflip;
+    jstr[FPSTR(CAM_HMIRROR)] = s->status.hmirror;
+    jstr[FPSTR(CAM_DCW)] = s->status.dcw;
+    jstr[FPSTR(CAM_COLORBAR)] = s->status.colorbar; 
 
-    jstr["xclk"] = xclk;
+    jstr[FPSTR(CAM_XCLK)] = xclk;
 
 }
 

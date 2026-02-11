@@ -6,7 +6,13 @@
 #include "src/app_httpd.h"      // Web server
 #include "src/camera_pins.h"    // Pin Mappings
 
+#ifdef ENABLE_MAIL_FEATURE
+#include "src/app_mail.h"      // Mail client
+#endif
+
 #include <esp_log.h>
+
+
 
 /* 
  * This sketch is a extension/expansion/rework of the ESP32 Camera webserer example.
@@ -75,6 +81,11 @@ void setup() {
         AppConn.printLocalTime(true);
     }
 
+#ifdef ENABLE_MAIL_FEATURE
+    // Start the mail client if enabled
+    AppMail.start();
+#endif
+
     // Start the web server
     AppHttpd.start();
 
@@ -108,6 +119,9 @@ void loop() {
                 handleSerial();
             }
             AppHttpd.cleanupWsClients();
+        #ifdef ENABLE_MAIL_FEATURE
+            AppMail.process();
+        #endif
         } else {
             // disconnected; notify 
             notifyDisconnect();

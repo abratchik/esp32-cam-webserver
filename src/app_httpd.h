@@ -7,6 +7,7 @@
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 
+#include "app_defines.h"
 #include "esp32pwm.h"
 
 #include "storage.h"
@@ -31,6 +32,16 @@
 
 #define MAX_VIDEO_STREAMS               5
 
+const char HTTPD_SERIAL_BUF[] PROGMEM = "serial_buf";
+const char HTTPD_ACTIVE_STREAMS[] PROGMEM = "active_streams";
+const char HTTPD_STREAMS_SERVED[] PROGMEM = "prev_streams";
+const char HTTPD_IMAGES_SERVED[] PROGMEM = "img_captured";
+const char HTTPD_MAX_STREAMS[] PROGMEM = "max_streams";
+
+const char HTTPD_MAPPING[] PROGMEM = "mapping";
+const char HTTPD_URI[] PROGMEM = "uri";
+const char HTTPD_PATH[] PROGMEM = "path";
+
 enum CaptureModeEnum {CAPTURE_STILL, CAPTURE_STREAM};
 enum StreamResponseEnum {STREAM_SUCCESS, 
                          STREAM_NUM_EXCEEDED, 
@@ -39,6 +50,9 @@ enum StreamResponseEnum {STREAM_SUCCESS,
                          STREAM_MODE_NOT_SUPPORTED, 
                          STREAM_IMAGE_CAPTURE_FAILED,
                          STREAM_CLIENT_NOT_FOUND};
+
+// Callback type for binary data transmission
+typedef int (*ProcessFrameCallback)(uint8_t* buffer, size_t size);
 
 String processor(const String& var);
 void onSystemStatus(AsyncWebServerRequest *request);
@@ -86,7 +100,7 @@ class CLAppHttpd : public CLAppComponent {
         void incImagesServed(){_imagesServed++;};
         
         // capture a frame and send it to the clients
-        int snapFrame();
+        int snapFrame(ProcessFrameCallback sendCallback = nullptr);
 
         // start stream
         StreamResponseEnum startStream(uint32_t id, CaptureModeEnum stream_mode);

@@ -13,6 +13,44 @@
 
 #include <esp_log.h>
 
+const char CAM_PNAME[] PROGMEM = "cam_name";
+
+const char CAM_LAMP[] PROGMEM = "lamp";
+const char CAM_AUTOLAMP[] PROGMEM = "autolamp";
+const char CAM_FLASHLAMP[] PROGMEM = "flashlamp";
+
+const char CAM_ROTATE[] PROGMEM = "rotate";
+const char CAM_FRAMESIZE[] PROGMEM = "framesize";
+const char CAM_PID[] PROGMEM = "cam_pid";
+const char CAM_VER[] PROGMEM = "cam_ver";
+const char CAM_FRAME_RATE[] PROGMEM = "frame_rate";
+const char CAM_QUALITY[] PROGMEM = "quality";
+const char CAM_BRIGHTNESS[] PROGMEM = "brightness";
+const char CAM_CONTRAST[] PROGMEM = "contrast"; 
+const char CAM_SATURATION[] PROGMEM = "saturation";
+const char CAM_SHARPNESS[] PROGMEM = "sharpness";
+const char CAM_DENOISE[] PROGMEM = "denoise";
+const char CAM_SPECIAL_EFFECT[] PROGMEM = "special_effect";
+const char CAM_WB_MODE[] PROGMEM = "wb_mode";
+const char CAM_AWB[] PROGMEM = "awb";
+const char CAM_AWB_GAIN[] PROGMEM = "awb_gain";
+const char CAM_AEC[] PROGMEM = "aec";
+const char CAM_AEC2[] PROGMEM = "aec2";
+const char CAM_AE_LEVEL[] PROGMEM = "ae_level";
+const char CAM_AEC_VALUE[] PROGMEM = "aec_value";
+const char CAM_AGC[] PROGMEM = "agc";
+const char CAM_AGC_GAIN[] PROGMEM = "agc_gain";
+const char CAM_GAINCEILING[] PROGMEM = "gainceiling";
+const char CAM_BPC[] PROGMEM = "bpc";
+const char CAM_WPC[] PROGMEM = "wpc";
+const char CAM_RAW_GMA[] PROGMEM = "raw_gma";
+const char CAM_LENC[] PROGMEM = "lenc";
+const char CAM_VFLIP[] PROGMEM = "vflip";
+const char CAM_HMIRROR[] PROGMEM = "hmirror";
+const char CAM_DCW[] PROGMEM = "dcw";
+const char CAM_COLORBAR[] PROGMEM = "colorbar";
+const char CAM_XCLK[] PROGMEM = "xclk";
+
 
 /**
  * @brief Camera Manager

@@ -190,14 +190,19 @@ String processor(const String& var) {
     return String();
 }
 
-
-int IRAM_ATTR CLAppHttpd::snapFrame() {
+int IRAM_ATTR CLAppHttpd::snapFrame(ProcessFrameCallback sendCallback) {
     int res = AppCam.snapToBuffer();
 
     if(!res) {
 
         if(AppCam.isJPEGinBuffer()){
-            ws->binaryAll( AppCam.getBuffer(), AppCam.getBufferSize());
+            if(sendCallback) {
+                int res = sendCallback(AppCam.getBuffer(), AppCam.getBufferSize());
+            } else {
+                // Default behavior: send via websocket
+                int res = ws->binaryAll(AppCam.getBuffer(), AppCam.getBufferSize()) != 
+                                        AsyncWebSocket::SendStatus::DISCARDED?OK:FAIL;
+            }
 
         } else {
             res = OK;
@@ -375,73 +380,73 @@ void onControl(AsyncWebServerRequest *request) {
           Serial.print('.');
         }
     }
-    else if(variable == "ssid") {AppConn.setSSID(value.c_str());AppConn.setPassword("");}
-    else if(variable == "password") AppConn.setPassword(value.c_str());
-    else if(variable == "st_ip") AppConn.setStaticIP(&(AppConn.getStaticIP()->ip), value.c_str());
-    else if(variable == "st_subnet") AppConn.setStaticIP(&(AppConn.getStaticIP()->netmask), value.c_str());
-    else if(variable == "st_gateway") AppConn.setStaticIP(&(AppConn.getStaticIP()->gateway), value.c_str());
-    else if(variable == "dns1") AppConn.setStaticIP(&(AppConn.getStaticIP()->dns1), value.c_str());
-    else if(variable == "dns2") AppConn.setStaticIP(&(AppConn.getStaticIP()->dns2), value.c_str());
-    else if(variable == "ap_ip") AppConn.setStaticIP(&(AppConn.getAPIP()->ip), value.c_str());
-    else if(variable == "ap_subnet") AppConn.setStaticIP(&(AppConn.getAPIP()->netmask), value.c_str());
-    else if(variable == "ap_name") AppConn.setApName(value.c_str());
-    else if(variable == "ap_pass") AppConn.setApPass(value.c_str());
-    else if(variable == "mdns_name") AppConn.setMDNSName(value.c_str());
-    else if(variable == "ntp_server") AppConn.setNTPServer(value.c_str());
-    else if(variable == "user") AppConn.setUser(value.c_str());
-    else if(variable == "pwd") AppConn.setPwd(value.c_str());
-    else if(variable == "ota_password") AppConn.setOTAPassword(value.c_str());
-    else if(variable == "framesize") {
+    else if(variable == FPSTR(CONN_SSID)) {AppConn.setSSID(value.c_str());AppConn.setPassword("");}
+    else if(variable == FPSTR(CONN_PASSWORD)) AppConn.setPassword(value.c_str());
+    else if(variable == FPSTR(CONN_ST_IP)) AppConn.setStaticIP(&(AppConn.getStaticIP()->ip), value.c_str());
+    else if(variable == FPSTR(CONN_ST_SUBNET)) AppConn.setStaticIP(&(AppConn.getStaticIP()->netmask), value.c_str());
+    else if(variable == FPSTR(CONN_ST_GATEWAY)) AppConn.setStaticIP(&(AppConn.getStaticIP()->gateway), value.c_str());
+    else if(variable == FPSTR(CONN_DNS1)) AppConn.setStaticIP(&(AppConn.getStaticIP()->dns1), value.c_str());
+    else if(variable == FPSTR(CONN_DNS2)) AppConn.setStaticIP(&(AppConn.getStaticIP()->dns2), value.c_str());
+    else if(variable == FPSTR(CONN_AP_IP)) AppConn.setStaticIP(&(AppConn.getAPIP()->ip), value.c_str());
+    else if(variable == FPSTR(CONN_AP_SUBNET)) AppConn.setStaticIP(&(AppConn.getAPIP()->netmask), value.c_str());
+    else if(variable == FPSTR(CONN_AP_SSID)) AppConn.setApName(value.c_str());
+    else if(variable == FPSTR(CONN_AP_PASS)) AppConn.setApPass(value.c_str());
+    else if(variable == FPSTR(CONN_MDNS_NAME)) AppConn.setMDNSName(value.c_str());
+    else if(variable == FPSTR(CONN_NTP_SERVER)) AppConn.setNTPServer(value.c_str());
+    else if(variable == FPSTR(CONN_USER)) AppConn.setUser(value.c_str());
+    else if(variable == FPSTR(CONN_PWD)) AppConn.setPwd(value.c_str());
+    else if(variable == FPSTR(CONN_OTA_PASSWORD)) AppConn.setOTAPassword(value.c_str());
+    else if(variable == FPSTR(CAM_FRAMESIZE)) {
         if(s->pixformat == PIXFORMAT_JPEG) res = s->set_framesize(s, (framesize_t)val);
     }
-    else if(variable == "quality") res = s->set_quality(s, val);
-    else if(variable == "xclk") { AppCam.setXclk(val); res = s->set_xclk(s, LEDC_TIMER_0, AppCam.getXclk()); }
-    else if(variable == "contrast") res = s->set_contrast(s, val);
-    else if(variable == "brightness") res = s->set_brightness(s, val);
-    else if(variable ==  "saturation") res = s->set_saturation(s, val);
-    else if(variable ==  "sharpness") res = s->set_sharpness(s, val);
-    else if(variable ==  "denoise") res = s->set_denoise(s, val);
-    else if(variable ==  "gainceiling") res = s->set_gainceiling(s, (gainceiling_t)val);
-    else if(variable ==  "colorbar") res = s->set_colorbar(s, val);
-    else if(variable ==  "awb") res = s->set_whitebal(s, val);
-    else if(variable ==  "agc") res = s->set_gain_ctrl(s, val);
-    else if(variable ==  "aec") res = s->set_exposure_ctrl(s, val);
-    else if(variable ==  "hmirror") res = s->set_hmirror(s, val);
-    else if(variable ==  "vflip") res = s->set_vflip(s, val);
-    else if(variable ==  "awb_gain") res = s->set_awb_gain(s, val);
-    else if(variable ==  "agc_gain") res = s->set_agc_gain(s, val);
-    else if(variable ==  "aec_value") res = s->set_aec_value(s, val);
-    else if(variable ==  "aec2") res = s->set_aec2(s, val);
-    else if(variable ==  "dcw") res = s->set_dcw(s, val);
-    else if(variable ==  "bpc") res = s->set_bpc(s, val);
-    else if(variable ==  "wpc") res = s->set_wpc(s, val);
-    else if(variable ==  "raw_gma") res = s->set_raw_gma(s, val);
-    else if(variable ==  "lenc") res = s->set_lenc(s, val);
-    else if(variable ==  "special_effect") res = s->set_special_effect(s, val);
-    else if(variable ==  "wb_mode") res = s->set_wb_mode(s, val);
-    else if(variable ==  "ae_level") res = s->set_ae_level(s, val);
-    else if(variable ==  "rotate") AppCam.setRotation(val);
-    else if(variable ==  "frame_rate") {
+    else if(variable == FPSTR(CAM_QUALITY)) res = s->set_quality(s, val);
+    else if(variable == FPSTR(CAM_XCLK)) { AppCam.setXclk(val); res = s->set_xclk(s, LEDC_TIMER_0, AppCam.getXclk()); }
+    else if(variable == FPSTR(CAM_CONTRAST)) res = s->set_contrast(s, val);
+    else if(variable == FPSTR(CAM_BRIGHTNESS)) res = s->set_brightness(s, val);
+    else if(variable == FPSTR(CAM_SATURATION)) res = s->set_saturation(s, val);
+    else if(variable == FPSTR(CAM_SHARPNESS)) res = s->set_sharpness(s, val);
+    else if(variable == FPSTR(CAM_DENOISE)) res = s->set_denoise(s, val);
+    else if(variable == FPSTR(CAM_GAINCEILING)) res = s->set_gainceiling(s, (gainceiling_t)val);
+    else if(variable == FPSTR(CAM_COLORBAR)) res = s->set_colorbar(s, val);
+    else if(variable == FPSTR(CAM_AWB)) res = s->set_whitebal(s, val);
+    else if(variable == FPSTR(CAM_AGC)) res = s->set_gain_ctrl(s, val);
+    else if(variable == FPSTR(CAM_AEC)) res = s->set_exposure_ctrl(s, val);
+    else if(variable == FPSTR(CAM_HMIRROR)) res = s->set_hmirror(s, val);
+    else if(variable == FPSTR(CAM_VFLIP)) res = s->set_vflip(s, val);
+    else if(variable == FPSTR(CAM_AWB_GAIN)) res = s->set_awb_gain(s, val);
+    else if(variable == FPSTR(CAM_AGC_GAIN)) res = s->set_agc_gain(s, val);
+    else if(variable == FPSTR(CAM_AEC_VALUE)) res = s->set_aec_value(s, val);
+    else if(variable == FPSTR(CAM_AEC2)) res = s->set_aec2(s, val);
+    else if(variable == FPSTR(CAM_DCW)) res = s->set_dcw(s, val);
+    else if(variable == FPSTR(CAM_BPC)) res = s->set_bpc(s, val);
+    else if(variable == FPSTR(CAM_WPC)) res = s->set_wpc(s, val);
+    else if(variable == FPSTR(CAM_RAW_GMA)) res = s->set_raw_gma(s, val);
+    else if(variable == FPSTR(CAM_LENC)) res = s->set_lenc(s, val);
+    else if(variable == FPSTR(CAM_SPECIAL_EFFECT)) res = s->set_special_effect(s, val);
+    else if(variable == FPSTR(CAM_WB_MODE)) res = s->set_wb_mode(s, val);
+    else if(variable == FPSTR(CAM_AE_LEVEL)) res = s->set_ae_level(s, val);
+    else if(variable == FPSTR(CAM_ROTATE)) AppCam.setRotation(val);
+    else if(variable == FPSTR(CAM_FRAME_RATE)) {
         AppCam.setFrameRate(val);
         AppHttpd.setFrameRate(val);
     }
-    else if(variable ==  "autolamp" && AppHttpd.getLamp() != -1) {
+    else if(variable ==  FPSTR(CAM_AUTOLAMP) && AppHttpd.getLamp() != -1) {
         AppHttpd.setAutoLamp(val);
     }
-    else if(variable ==  "lamp" && AppHttpd.getLamp() != -1) {
+    else if(variable ==  FPSTR(CAM_LAMP) && AppHttpd.getLamp() != -1) {
         AppHttpd.setLamp(constrain(val,0,100));
     }
-    else if(variable ==  "flashlamp" && AppHttpd.getLamp() != -1) {
+    else if(variable ==  FPSTR(CAM_FLASHLAMP) && AppHttpd.getLamp() != -1) {
         AppHttpd.setFlashLamp(constrain(val,0,100));
     }
-    else if(variable == "accesspoint") AppConn.setLoadAsAP(val);
-    else if(variable == "ap_channel") AppConn.setAPChannel(val);
-    else if(variable == "ap_dhcp") AppConn.setAPDHCP(val);
-    else if(variable == "dhcp") AppConn.setDHCPEnabled(val);
-    else if(variable == "port") AppConn.setPort(val);
-    else if(variable == "ota_enabled") AppConn.setOTAEnabled(val);
-    else if(variable == "gmt_offset") AppConn.setGmtOffset_sec(val);
-    else if(variable == "dst_offset") AppConn.setDaylightOffset_sec(val);
+    else if(variable == FPSTR(CONN_LOAD_AS_AP)) AppConn.setLoadAsAP(val);
+    else if(variable == FPSTR(CONN_AP_CHANNEL)) AppConn.setAPChannel(val);
+    else if(variable == FPSTR(CONN_AP_DHCP)) AppConn.setAPDHCP(val);
+    else if(variable == FPSTR(CONN_DHCP)) AppConn.setDHCPEnabled(val);
+    else if(variable == FPSTR(CONN_HTTP_PORT)) AppConn.setPort(val);
+    else if(variable == FPSTR(CONN_OTA_ENABLED)) AppConn.setOTAEnabled(val);
+    else if(variable == FPSTR(CONN_GMT_OFFSET)) AppConn.setGmtOffset_sec(val);
+    else if(variable == FPSTR(CONN_DST_OFFSET)) AppConn.setDaylightOffset_sec(val);
     else {
         res = -1;
     }
@@ -502,23 +507,23 @@ void CLAppHttpd::dumpCameraStatusToJson(char * buf, size_t size, bool full_statu
     JsonDocument jdoc;
     JsonObject jstr = jdoc.to<JsonObject>();
 
-    jstr["cam_name"] = getName();
+    jstr[FPSTR(CAM_PNAME)] = getName();
     // jstr["stream_url"] = AppConn.getStreamUrl();
     AppConn.updateTimeStr();
-    jstr["local_time"] = AppConn.getLocalTimeStr();
-    jstr["up_time"] = AppConn.getUpTimeStr();
-    jstr["rssi"] = (!AppConn.isAccessPoint()?WiFi.RSSI():(uint8_t)0);
-    jstr["esp_temp"] = getTemp();
-    jstr["serial_buf"] = getSerialBuffer();  
+    jstr[FPSTR(CONN_LOCAL_TIME)] = AppConn.getLocalTimeStr();
+    jstr[FPSTR(CONN_UP_TIME)] = AppConn.getUpTimeStr();
+    jstr[FPSTR(CONN_RSSI)] = (!AppConn.isAccessPoint()?WiFi.RSSI():(uint8_t)0);
+    jstr[FPSTR(ESP_TEMP_PARAM)] = getTemp();
+    jstr[FPSTR(HTTPD_SERIAL_BUF)] = getSerialBuffer();  
 
     AppCam.dumpStatusToJson(jstr, full_status);
 
     if(full_status) {
         
-        jstr["lamp"] = getLamp();
-        jstr["autolamp"] = isAutoLamp();
-        jstr["flashlamp"] = getFlashLamp(); 
-        jstr["code_ver"] = getVersion();
+        jstr[FPSTR(CAM_LAMP)] = getLamp();
+        jstr[FPSTR(CAM_AUTOLAMP)] = isAutoLamp();
+        jstr[FPSTR(CAM_FLASHLAMP)] = getFlashLamp(); 
+        jstr[FPSTR(APP_CODE_VERSION_PARAM)] = getVersion();
     }
 
     serializeJson(jdoc, buf, size);
@@ -529,84 +534,84 @@ void CLAppHttpd::dumpSystemStatusToJson(char * buf, size_t size) {
     JsonDocument jdoc;
     JsonObject jstr = jdoc.to<JsonObject>();
 
-    jstr["cam_name"] = getName();
-    jstr["code_ver"] = getVersion();
-    jstr["base_version"] = BASE_VERSION;
-    jstr["sketch_size"] = getSketchSize();
-    jstr["sketch_space"] = getSketchSpace();
-    jstr["sketch_md5"] = getSketchMD5();
-    jstr["esp_sdk"] = ESP.getSdkVersion();
+    jstr[FPSTR(CAM_PNAME)] = getName();
+    jstr[FPSTR(APP_CODE_VERSION_PARAM)] = getVersion();
+    jstr[FPSTR(APP_BASE_VERSION_PARAM)] = BASE_VERSION;
+    jstr[FPSTR(APP_SKETCH_SIZE_PARAM)] = getSketchSize();
+    jstr[FPSTR(APP_SKETCH_SPACE_PARAM)] = getSketchSpace();
+    jstr[FPSTR(APP_SKETCH_MD5_PARAM)] = getSketchMD5();
+    jstr[FPSTR(ESP_SDK_VERSION_PARAM)] = ESP.getSdkVersion();
 
-    jstr["accesspoint"] = AppConn.isAccessPoint();
-    jstr["captiveportal"] = AppConn.isCaptivePortal();
-    jstr["ap_name"] = AppConn.getApName();
-    jstr["ssid"] = AppConn.getSSID();
+    jstr[FPSTR(CONN_LOAD_AS_AP)] = AppConn.isAccessPoint();
+    jstr[FPSTR(CONN_CAPTIVE_PORTAL)] = AppConn.isCaptivePortal();
+    jstr[FPSTR(CONN_AP_NAME)] = AppConn.getApName();
+    jstr[FPSTR(CONN_SSID)] = AppConn.getSSID();
 
-    jstr["rssi"] = (!AppConn.isAccessPoint()?WiFi.RSSI():(uint8_t)0);
-    jstr["bssid"] = (!AppConn.isAccessPoint()?WiFi.BSSIDstr().c_str():(char*)"");
-    jstr["dhcp"] = AppConn.isDHCPEnabled();
-    jstr["ip_address"] = (AppConn.isAccessPoint()?WiFi.softAPIP().toString().c_str():WiFi.localIP().toString().c_str());
-    jstr["subnet"] = (!AppConn.isAccessPoint()?WiFi.subnetMask().toString().c_str():(char*)"");
-    jstr["gateway"] = (!AppConn.isAccessPoint()?WiFi.gatewayIP().toString().c_str():(char*)"");
+    jstr[FPSTR(CONN_RSSI)] = (!AppConn.isAccessPoint()?WiFi.RSSI():(uint8_t)0);
+    jstr[FPSTR(CONN_BSSID)] = (!AppConn.isAccessPoint()?WiFi.BSSIDstr().c_str():(char*)"");
+    jstr[FPSTR(CONN_DHCP)] = AppConn.isDHCPEnabled();
+    jstr[FPSTR(CONN_IP_ADDRESS)] = (AppConn.isAccessPoint()?WiFi.softAPIP().toString().c_str():WiFi.localIP().toString().c_str());
+    jstr[FPSTR(CONN_SUBNET)] = (!AppConn.isAccessPoint()?WiFi.subnetMask().toString().c_str():(char*)"");
+    jstr[FPSTR(CONN_GATEWAY)] = (!AppConn.isAccessPoint()?WiFi.gatewayIP().toString().c_str():(char*)"");
 
-    jstr["st_ip"] = (AppConn.getStaticIP()->ip?AppConn.getStaticIP()->ip->toString().c_str():(char*)"");
-    jstr["st_subnet"] = (AppConn.getStaticIP()->netmask?AppConn.getStaticIP()->netmask->toString().c_str():(char*)"");
-    jstr["st_gateway"] = (AppConn.getStaticIP()->gateway?AppConn.getStaticIP()->gateway->toString().c_str():(char*)"");
-    jstr["dns1"] = (AppConn.getStaticIP()->dns1?AppConn.getStaticIP()->dns1->toString().c_str():(char*)"");
-    jstr["dns2"] = (AppConn.getStaticIP()->dns2?AppConn.getStaticIP()->dns2->toString().c_str():(char*)"");
+    jstr[FPSTR(CONN_ST_IP)] = (AppConn.getStaticIP()->ip?AppConn.getStaticIP()->ip->toString().c_str():(char*)"");
+    jstr[FPSTR(CONN_ST_SUBNET)] = (AppConn.getStaticIP()->netmask?AppConn.getStaticIP()->netmask->toString().c_str():(char*)"");
+    jstr[FPSTR(CONN_ST_GATEWAY)] = (AppConn.getStaticIP()->gateway?AppConn.getStaticIP()->gateway->toString().c_str():(char*)"");
+    jstr[FPSTR(CONN_DNS1)] = (AppConn.getStaticIP()->dns1?AppConn.getStaticIP()->dns1->toString().c_str():(char*)"");
+    jstr[FPSTR(CONN_DNS2)] = (AppConn.getStaticIP()->dns2?AppConn.getStaticIP()->dns2->toString().c_str():(char*)"");
 
-    jstr["ap_ip"] = (AppConn.getAPIP()->ip?AppConn.getAPIP()->ip->toString().c_str():(char*)"");
-    jstr["ap_subnet"] = (AppConn.getAPIP()->netmask?AppConn.getAPIP()->netmask->toString().c_str():(char*)"");
+    jstr[FPSTR(CONN_AP_IP)] = (AppConn.getAPIP()->ip?AppConn.getAPIP()->ip->toString().c_str():(char*)"");
+    jstr[FPSTR(CONN_AP_SUBNET)] = (AppConn.getAPIP()->netmask?AppConn.getAPIP()->netmask->toString().c_str():(char*)"");
 
-    jstr["ap_channel"] = AppConn.getAPChannel();
-    jstr["ap_dhcp"] = AppConn.getAPDHCP();
+    jstr[FPSTR(CONN_AP_CHANNEL)] = AppConn.getAPChannel();
+    jstr[FPSTR(CONN_AP_DHCP)] = AppConn.getAPDHCP();
 
-    jstr["mdns_name"] = AppConn.getMDNSname();
-    jstr["port"] = AppConn.getPort();
+    jstr[FPSTR(CONN_MDNS_NAME)] = AppConn.getMDNSname();
+    jstr[FPSTR(CONN_HTTP_PORT)] = AppConn.getPort();
 
-    jstr["user"] = AppConn.getUser();
+    jstr[FPSTR(CONN_USER)] = AppConn.getUser();
 
     byte mac[6];
     WiFi.macAddress(mac);
     char mac_buf[18];
     snprintf(mac_buf, sizeof(mac_buf), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    jstr["mac_address"] = mac_buf;
+    jstr[FPSTR(CONN_MAC_ADDRESS)] = mac_buf;
 
     AppConn.updateTimeStr();
 
-    jstr["local_time"] = AppConn.getLocalTimeStr();
-    jstr["up_time"] = AppConn.getUpTimeStr();
-    jstr["ntp_server"] = AppConn.getNTPServer();
-    jstr["gmt_offset"] = AppConn.getGmtOffset_sec();
-    jstr["dst_offset"] = AppConn.getDaylightOffset_sec();
+    jstr[FPSTR(CONN_LOCAL_TIME)] = AppConn.getLocalTimeStr();
+    jstr[FPSTR(CONN_UP_TIME)] = AppConn.getUpTimeStr();
+    jstr[FPSTR(CONN_NTP_SERVER)] = AppConn.getNTPServer();
+    jstr[FPSTR(CONN_GMT_OFFSET)] = AppConn.getGmtOffset_sec();
+    jstr[FPSTR(CONN_DST_OFFSET)] = AppConn.getDaylightOffset_sec();
     
-    jstr["active_streams"] = AppHttpd.getStreamCount();
-    jstr["prev_streams"] = AppHttpd.getStreamsServed();
-    jstr["img_captured"] = AppHttpd.getImagesServed();
+    jstr[FPSTR(HTTPD_ACTIVE_STREAMS)] = AppHttpd.getStreamCount();
+    jstr[FPSTR(HTTPD_STREAMS_SERVED)] = AppHttpd.getStreamsServed();
+    jstr[FPSTR(HTTPD_IMAGES_SERVED)] = AppHttpd.getImagesServed();
 
-    jstr["ota_enabled"] = AppConn.isOTAEnabled();
+    jstr[FPSTR(CONN_OTA_ENABLED)] = AppConn.isOTAEnabled();
 
-    jstr["cpu_freq"] = ESP.getCpuFreqMHz();
-    jstr["num_cores"] = ESP.getChipCores();
-    jstr["esp_temp"] = getTemp(); // Celsius
-    jstr["heap_avail"] = ESP.getHeapSize();
-    jstr["heap_free"] = ESP.getFreeHeap();
-    jstr["heap_min_free"] = ESP.getMinFreeHeap();
-    jstr["heap_max_bloc"] = ESP.getMaxAllocHeap();
+    jstr[FPSTR(ESP_CPU_FREQ_PARAM)] = ESP.getCpuFreqMHz();
+    jstr[FPSTR(ESP_NUM_CORES_PARAM)] = ESP.getChipCores();
+    jstr[FPSTR(ESP_TEMP_PARAM)] = getTemp(); // Celsius
+    jstr[FPSTR(ESP_HEAP_AVAIL_PARAM)] = ESP.getHeapSize();
+    jstr[FPSTR(ESP_HEAP_FREE_PARAM)] = ESP.getFreeHeap();
+    jstr[FPSTR(ESP_HEAP_MIN_FREE_PARAM)] = ESP.getMinFreeHeap();
+    jstr[FPSTR(ESP_HEAP_MAX_BLOC_PARAM)] = ESP.getMaxAllocHeap();
 
-    jstr["psram_found"] = psramFound();
-    jstr["psram_size"] = (psramFound()?ESP.getPsramSize():0);
-    jstr["psram_free"] = (psramFound()?ESP.getFreePsram():0);
-    jstr["psram_min_free"] = (psramFound()?ESP.getMinFreePsram():0);
-    jstr["psram_max_bloc"] = (psramFound()?ESP.getMaxAllocPsram():0);
+    jstr[FPSTR(ESP_PSRAM_FOUND_PARAM)] = psramFound();
+    jstr[FPSTR(ESP_PSRAM_SIZE_PARAM)] = (psramFound()?ESP.getPsramSize():0);
+    jstr[FPSTR(ESP_PSRAM_FREE_PARAM)] = (psramFound()?ESP.getFreePsram():0);
+    jstr[FPSTR(ESP_PSRAM_MIN_FREE_PARAM)] = (psramFound()?ESP.getMinFreePsram():0);
+    jstr[FPSTR(ESP_PSRAM_MAX_BLOC_PARAM)] = (psramFound()?ESP.getMaxAllocPsram():0);
 
-    jstr["xclk"] = AppCam.getXclk();
+    jstr[FPSTR(CAM_XCLK)] = AppCam.getXclk();
 
-    jstr["storage_size"] = Storage.getSize();
-    jstr["storage_used"] = Storage.getUsed();
-    jstr["storage_units"] = (Storage.capacityUnits()==STORAGE_UNITS_MB?"MB":"");
+    jstr[FPSTR(STORAGE_SIZE)] = Storage.getSize();
+    jstr[FPSTR(STORAGE_USED)] = Storage.getUsed();
+    jstr[FPSTR(STORAGE_UNITS_STR)] = (Storage.capacityUnits()==STORAGE_UNITS_MB?"MB":"");
 
-    jstr["serial_buf"] = getSerialBuffer();
+    jstr[FPSTR(HTTPD_SERIAL_BUF)] = getSerialBuffer();
 
     serializeJson(jdoc, buf, size);
 
@@ -624,10 +629,10 @@ int CLAppHttpd::loadPrefs() {
         return ret;
     }
     
-    _lampVal = doc["lamp"] | -1;
-    _autoLamp = doc["autolamp"] | false;
-    _flashLamp = doc["flashlamp"] | 0;
-    _max_streams = doc["max_streams"] | 2;
+    _lampVal = doc[FPSTR(CAM_LAMP)] | -1;
+    _autoLamp = doc[FPSTR(CAM_AUTOLAMP)] | false;
+    _flashLamp = doc[FPSTR(CAM_FLASHLAMP)] | 0;
+    _max_streams = doc[FPSTR(HTTPD_MAX_STREAMS)] | 2;
 
     int pin = 0, freq = 0, resolution = 0, def_val = 0;
 
@@ -657,19 +662,19 @@ int CLAppHttpd::loadPrefs() {
             ESP_LOGW(tag,"Failed to attach PWM to pin %d", pin);
     }
 
-    JsonArray jaMapping = doc["mapping"].as<JsonArray>();
+    JsonArray jaMapping = doc[FPSTR(HTTPD_MAPPING)].as<JsonArray>();
 
     for(JsonObject joMap : jaMapping) {
         UriMapping *um = (UriMapping*) malloc(sizeof(UriMapping));
-        if(snprintf(um->uri, sizeof(um->uri), "%s", joMap["uri"] | "") > 0 &&
-           snprintf(um->path, sizeof(um->path), "%s", joMap["path"] | "") > 0) {
+        if(snprintf(um->uri, sizeof(um->uri), "%s", joMap[FPSTR(HTTPD_URI)] | "") > 0 &&
+           snprintf(um->path, sizeof(um->path), "%s", joMap[FPSTR(HTTPD_PATH)] | "") > 0) {
             mappingList[_mappingCount] = um;
-            ESP_LOGI(tag,"Added URI mapping: %s -> %s", um->uri, um->path);
+            ESP_LOGD(tag,"Added URI mapping: %s -> %s", um->uri, um->path);
             _mappingCount++;
             if(_mappingCount >= MAX_URI_MAPPINGS) break;
         } 
         else {
-            ESP_LOGW(tag,"Failed to parse URI mapping for uri %s and path %s", joMap["uri"] | "", joMap["path"] | "");
+            ESP_LOGW(tag,"Failed to parse URI mapping for uri %s and path %s", joMap[FPSTR(HTTPD_URI)] | "", joMap[FPSTR(HTTPD_PATH)] | "");
             free(um);
         }
     }
@@ -680,17 +685,16 @@ int CLAppHttpd::loadPrefs() {
 }
 
 int CLAppHttpd::savePrefs() {
-    char * prefs_file = getPrefsFileName(true); 
 
     JsonDocument doc;
     JsonObject jstr = doc.to<JsonObject>();
     
     jstr["my_name"] = myName;
 
-    jstr["lamp"] = _lampVal;
-    jstr["autolamp"] = _autoLamp;
-    jstr["flashlamp"] = _flashLamp;
-    jstr["max_streams"] = _max_streams;
+    jstr[FPSTR(CAM_LAMP)] = _lampVal;
+    jstr[FPSTR(CAM_AUTOLAMP)] = _autoLamp;
+    jstr[FPSTR(CAM_FLASHLAMP)] = _flashLamp;
+    jstr[FPSTR(HTTPD_MAX_STREAMS)] = _max_streams;
 
     if(_pwmCount > 0) {
 
@@ -710,25 +714,16 @@ int CLAppHttpd::savePrefs() {
     }
 
     if(_mappingCount > 0) {
-        JsonArray jaMapping = jstr["mapping"].to<JsonArray>();
+        JsonArray jaMapping = jstr[FPSTR(HTTPD_MAPPING)].to<JsonArray>();
 
         for(int i=0; i < _mappingCount; i++) {
             JsonObject objMap = jaMapping.add<JsonObject>();
-            objMap["uri"] = mappingList[i]->uri;
-            objMap["path"] = mappingList[i]->path;
+            objMap[FPSTR(HTTPD_URI)] = mappingList[i]->uri;
+            objMap[FPSTR(HTTPD_PATH)] = mappingList[i]->path;
         }
     }
 
-    File file = Storage.open(prefs_file, FILE_WRITE);
-    if(file) {
-        serializeJson(doc, file);
-        file.close();
-        return OK;
-    }
-    else {
-        ESP_LOGW(tag,"Failed to save web server preferences to file %s", prefs_file);
-        return FAIL;
-    }
+    return savePrefsToFile(&doc);
 }
 
 int CLAppHttpd::attachPWM(uint8_t pin, double freq, uint8_t resolution_bits) {

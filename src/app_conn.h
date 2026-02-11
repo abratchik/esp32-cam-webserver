@@ -19,6 +19,50 @@
 
 #define CREDENTIALS_SIZE                32
 
+const char CONN_DHCP[] PROGMEM = "dhcp";
+const char CONN_SSID[] PROGMEM = "ssid";
+const char CONN_RSSI[] PROGMEM = "rssi";
+const char CONN_BSSID[] PROGMEM = "bssid";
+const char CONN_SSID_LIST[] PROGMEM = "stations";
+const char CONN_PASSWORD[] PROGMEM = "pass";
+const char CONN_STATIC_IP[] PROGMEM = "static_ip";
+const char CONN_MDNS_NAME[] PROGMEM = "mdns_name";
+const char CONN_NETMASK[] PROGMEM = "netmask";
+const char CONN_SUBNET[] PROGMEM = "subnet";
+const char CONN_GATEWAY[] PROGMEM = "gateway";
+const char CONN_DNS1[] PROGMEM = "dns1";
+const char CONN_DNS2[] PROGMEM = "dns2";
+const char CONN_HOST_NAME[] PROGMEM = "host_name";
+const char CONN_HTTP_PORT[] PROGMEM = "http_port";
+const char CONN_USER[] PROGMEM = "user";
+const char CONN_PWD[] PROGMEM = "pwd";
+const char CONN_OTA_ENABLED[] PROGMEM = "ota_enabled";
+const char CONN_OTA_PASSWORD[] PROGMEM = "ota_password";
+const char CONN_ACCESS_POINT[] PROGMEM = "accesspoint";
+const char CONN_LOAD_AS_AP[] PROGMEM = "load_as_ap";
+const char CONN_AP_NAME[] PROGMEM = "ap_name";
+const char CONN_AP_SSID[] PROGMEM = "ap_ssid";
+const char CONN_AP_PASS[] PROGMEM = "ap_pass";
+const char CONN_AP_DHCP[] PROGMEM = "ap_dhcp";
+const char CONN_AP_IP[] PROGMEM = "ap_ip";
+const char CONN_AP_CHANNEL[] PROGMEM = "ap_channel";
+const char CONN_AP_SUBNET[] PROGMEM = "ap_subnet";
+const char CONN_IP[] PROGMEM = "ip";
+const char CONN_IP_ADDRESS[] PROGMEM = "ip_address";
+const char CONN_MAC_ADDRESS[] PROGMEM = "mac_address";
+const char CONN_NTP_SERVER[] PROGMEM = "ntp_server";
+const char CONN_GMT_OFFSET[] PROGMEM = "gmt_offset";
+const char CONN_DST_OFFSET[] PROGMEM = "dst_offset";
+const char CONN_ST_IP[] PROGMEM = "st_ip";
+const char CONN_ST_SUBNET[] PROGMEM = "st_subnet";
+const char CONN_ST_GATEWAY[] PROGMEM = "st_gateway";
+
+const char CONN_LOCAL_TIME[] PROGMEM = "local_time";
+const char CONN_UP_TIME[] PROGMEM = "up_time";
+
+const char CONN_CAPTIVE_PORTAL[] PROGMEM = "captiveportal";
+
+
 /**
  * @brief WiFi connectivity details (SSID/password).
  * 
@@ -111,7 +155,7 @@ class CLAppConn : public CLAppComponent {
     private:
         int getSSIDIndex();
         void calcURLs();
-        void readIPFromJSON(JsonObject context, IPAddress ** ip_address, const char * token);
+        void readIPFromJSON(JsonObject context, IPAddress ** ip_address, const __FlashStringHelper * token);
 
         // Known networks structure. Max number of known stations limited for memory considerations
         Station *stationList[MAX_KNOWN_STATIONS]; 

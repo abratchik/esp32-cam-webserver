@@ -198,14 +198,14 @@ int CLAppConn::loadPrefs() {
     }
 
     JsonObject jctx = jdoc.as<JsonObject>();
-    if(snprintf(mdnsName, sizeof(mdnsName), "%s", jctx["mdns_name"] | "") == 0)
+    if(snprintf(mdnsName, sizeof(mdnsName), "%s", jctx[FPSTR(CONN_MDNS_NAME)] | "") == 0)
         ESP_LOGW(tag,"MDNS Name is not defined!");
 
-    snprintf(hostName, sizeof(hostName), "%s", jctx["host_name"] | "");
-    httpPort = jctx["http_port"] | 80;
-    dhcp = jctx["dhcp"] | true;
+    snprintf(hostName, sizeof(hostName), "%s", jctx[FPSTR(CONN_HOST_NAME)] | "");
+    httpPort = jctx[FPSTR(CONN_HTTP_PORT)] | 80;
+    dhcp = jctx[FPSTR(CONN_DHCP)] | true;
 
-    JsonArray stations = jctx["stations"].as<JsonArray>();
+    JsonArray stations = jctx[FPSTR(CONN_SSID_LIST)].as<JsonArray>();
     if(stations.size() > MAX_KNOWN_STATIONS) {
         ESP_LOGW(tag,"Too many known stations defined in config, only first %d will be used", MAX_KNOWN_STATIONS);
     }
@@ -214,8 +214,8 @@ int CLAppConn::loadPrefs() {
         ESP_LOGI(tag,"Known external SSIDs: ");
         for(JsonObject station : stations) {
             Station *s = (Station*) malloc(sizeof(Station));
-            snprintf(s->ssid, sizeof(s->ssid), station["ssid"] | "");
-            snprintf(dbuf, sizeof(dbuf), station["pass"] | "");
+            snprintf(s->ssid, sizeof(s->ssid), station[FPSTR(CONN_SSID)] | "");
+            snprintf(dbuf, sizeof(dbuf), station[FPSTR(CONN_PASSWORD)] | "");
             urlDecode(s->password, dbuf, sizeof(dbuf));
             Serial.println(s->ssid);
             stationList[stationCount] = s;
@@ -228,44 +228,44 @@ int CLAppConn::loadPrefs() {
         
     // read static IP
 
-    if(jctx["static_ip"].is<JsonObject>()) {
-        JsonObject static_ip = jctx["static_ip"].as<JsonObject>();
-        readIPFromJSON(static_ip, &staticIP.ip, "ip");
-        readIPFromJSON(static_ip, &staticIP.netmask, "netmask");
-        readIPFromJSON(static_ip, &staticIP.gateway, "gateway");
-        readIPFromJSON(static_ip, &staticIP.dns1, "dns1");
-        readIPFromJSON(static_ip, &staticIP.dns2, "dns2");
+    if(jctx[FPSTR(CONN_STATIC_IP)].is<JsonObject>()) {
+        JsonObject static_ip = jctx[FPSTR(CONN_STATIC_IP)].as<JsonObject>();
+        readIPFromJSON(static_ip, &staticIP.ip, FPSTR(CONN_IP));
+        readIPFromJSON(static_ip, &staticIP.netmask, FPSTR(CONN_NETMASK));
+        readIPFromJSON(static_ip, &staticIP.gateway, FPSTR(CONN_GATEWAY));
+        readIPFromJSON(static_ip, &staticIP.dns1, FPSTR(CONN_DNS1));
+        readIPFromJSON(static_ip, &staticIP.dns2, FPSTR(CONN_DNS2));
     }
     
-    load_as_ap = jctx["load_as_ap"] | false;
-    snprintf(apName, sizeof(apName), "%s", jctx["ap_ssid"] | "ESP32-CAM-AP");
+    load_as_ap = jctx[FPSTR(CONN_LOAD_AS_AP)] | false;
+    snprintf(apName, sizeof(apName), "%s", jctx[FPSTR(CONN_AP_SSID)] | "ESP32-CAM-AP");
 
-    sniprintf(dbuf, sizeof(dbuf), "%s", jctx["ap_pass"] | "");
+    sniprintf(dbuf, sizeof(dbuf), "%s", jctx[FPSTR(CONN_AP_PASS)] | "");
     urlDecode(apPass, dbuf, sizeof(dbuf));
 
-    ap_channel = jctx["ap_channel"] | 1;
-    ap_dhcp = jctx["ap_dhcp"] | true;
+    ap_channel = jctx[FPSTR(CONN_AP_CHANNEL)] | 1;
+    ap_dhcp = jctx[FPSTR(CONN_AP_DHCP)] | true;
     
     // read AP IP
-    if(jctx["ap_ip"].is<JsonObject>()) {
-        JsonObject ap_ip = jctx["ap_ip"].as<JsonObject>();
-        readIPFromJSON(ap_ip, &apIP.ip, "ip");
-        readIPFromJSON(ap_ip, &apIP.netmask, "netmask");
+    if(jctx[FPSTR(CONN_AP_IP)].is<JsonObject>()) {
+        JsonObject ap_ip = jctx[FPSTR(CONN_AP_IP)].as<JsonObject>();
+        readIPFromJSON(ap_ip, &apIP.ip, FPSTR(CONN_IP));
+        readIPFromJSON(ap_ip, &apIP.netmask, FPSTR(CONN_NETMASK));
     }
     
     // User name and password
-    sniprintf(user, sizeof(user), "%s", jctx["user"] | "admin");
-    sniprintf(dbuf, sizeof(dbuf), "%s", jctx["pwd"] | "");
+    sniprintf(user, sizeof(user), "%s", jctx[FPSTR(CONN_USER)] | "admin");
+    sniprintf(dbuf, sizeof(dbuf), "%s", jctx[FPSTR(CONN_PWD)] | "");
     urlDecode(pwd, dbuf, sizeof(dbuf));
 
     // OTA
-    otaEnabled = jctx["ota_enabled"] | false;
-    sniprintf(dbuf, sizeof(dbuf), "%s", jctx["ota_password"] | "");
+    otaEnabled = jctx[FPSTR(CONN_OTA_ENABLED)] | false;
+    sniprintf(dbuf, sizeof(dbuf), "%s", jctx[FPSTR(CONN_OTA_PASSWORD)] | "");
     urlDecode(otaPassword, dbuf, sizeof(dbuf));
 
     // NTP
-    snprintf(ntpServer, sizeof(ntpServer), "%s", jctx["ntp_server"] | "ru.pool.ntp.org");
-    gmtOffset_sec = jctx["gmt_offset"] | 0;
+    snprintf(ntpServer, sizeof(ntpServer), "%s", jctx[FPSTR(CONN_NTP_SERVER)] | "ru.pool.ntp.org");
+    gmtOffset_sec = jctx[FPSTR(CONN_GMT_OFFSET)] | 0;
 
     daylightOffset_sec = daylightOffset_sec ? daylightOffset_sec : 0;
 
@@ -280,7 +280,7 @@ void CLAppConn::setStaticIP (IPAddress ** ip_address, const char * strval) {
     }
 }
 
-void CLAppConn::readIPFromJSON (JsonObject context, IPAddress ** ip_address, const char * token) {
+void CLAppConn::readIPFromJSON (JsonObject context, IPAddress ** ip_address, const __FlashStringHelper* token) {
     char buf[16];
     if(snprintf(buf, sizeof(buf), "%s", context[token] | "") != 0) {
         setStaticIP(ip_address, buf);
@@ -289,17 +289,9 @@ void CLAppConn::readIPFromJSON (JsonObject context, IPAddress ** ip_address, con
 
 int CLAppConn::savePrefs() {
 
-    char * prefs_file = getPrefsFileName(true); 
-
-    if (Storage.exists(prefs_file)) {
-        ESP_LOGI(tag,"Updating %s", prefs_file);
-    } else {
-        ESP_LOGI(tag,"Creating %s", prefs_file);
-    }
-
     JsonDocument doc;
     JsonObject jstr = doc.to<JsonObject>();
-    jstr["mdns_name"] = mdnsName;
+    jstr[FPSTR(CONN_MDNS_NAME)] = mdnsName;
 
     int count = stationCount;
     int index = getSSIDIndex();
@@ -310,68 +302,57 @@ int CLAppConn::savePrefs() {
     char ebuf[254]; 
 
     if(index < 0 || count > 0) {
-        JsonArray stations = jstr["stations"].to<JsonArray>();
+        JsonArray stations = jstr[FPSTR(CONN_SSID_LIST)].to<JsonArray>();
 
         // if(index < 0 && strcmp(ssid, "") != 0) {
         //     JsonObject station = stations.createNestedObject();
-        //     station["ssid"] = ssid;
+        //     station[FPSTR(CONN_SSID)] = ssid;
         //     urlEncode(ebuf, password, sizeof(password));
-        //     station["pass"] = ebuf;
+        //     station[FPSTR(CONN_PASSWORD)] = ebuf;
         //     stations.add(station);
         // }
  
         for(int i=0; i < count && stationList[i]; i++) {
             JsonObject station = stations.add<JsonObject>();
-            station["ssid"] = stationList[i]->ssid;
+            station[FPSTR(CONN_SSID)] = stationList[i]->ssid;
             if(index >= 0 && i == index) {
                 urlEncode(ebuf, password, sizeof(password));
-                station["pass"] = ebuf;
+                station[FPSTR(CONN_PASSWORD)] = ebuf;
             }
             else {
                 urlEncode(ebuf, stationList[i]->password, sizeof(stationList[i]->password));
-                station["pass"] = ebuf;
+                station[FPSTR(CONN_PASSWORD)] = ebuf;
             }
         }
     }
 
-    jstr["dhcp"] = dhcp;
-    if(staticIP.ip) jstr["static_ip"]["ip"] = staticIP.ip->toString(); 
-    if(staticIP.netmask) jstr["static_ip"]["netmask"] = staticIP.netmask->toString();
-    if(staticIP.gateway) jstr["static_ip"]["gateway"] = staticIP.gateway->toString();
-    if(staticIP.dns1) jstr["static_ip"]["dns1"] = staticIP.dns1->toString();
-    if(staticIP.dns2) jstr["static_ip"]["dns2"] = staticIP.dns2->toString();
+    jstr[FPSTR(CONN_DHCP)] = dhcp;
+    if(staticIP.ip) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_IP)] = staticIP.ip->toString(); 
+    if(staticIP.netmask) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_NETMASK)] = staticIP.netmask->toString();
+    if(staticIP.gateway) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_GATEWAY)] = staticIP.gateway->toString();
+    if(staticIP.dns1) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_DNS1)] = staticIP.dns1->toString();
+    if(staticIP.dns2) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_DNS2)] = staticIP.dns2->toString();
 
-    jstr["http_port"] = httpPort;
-    jstr["user"] = user;
-    jstr["pwd"] = pwd;
-    jstr["ota_enabled"] = otaEnabled;
+    jstr[FPSTR(CONN_HTTP_PORT)] = httpPort;
+    jstr[FPSTR(CONN_USER)] = user;
+    jstr[FPSTR(CONN_PWD)] = pwd;
+    jstr[FPSTR(CONN_OTA_ENABLED)] = otaEnabled;
     urlEncode(ebuf, otaPassword, sizeof(otaPassword));
-    jstr["ota_password"] = ebuf;
+    jstr[FPSTR(CONN_OTA_PASSWORD)] = ebuf;
 
-    jstr["accesspoint"] = load_as_ap;
-    jstr["ap_ssid"] = apName;
+    jstr[FPSTR(CONN_ACCESS_POINT)] = load_as_ap;
+    jstr[FPSTR(CONN_AP_SSID)] = apName;
     urlEncode(ebuf, apPass, sizeof(apPass));
-    jstr["ap_pass"] = ebuf;
-    jstr["ap_dhcp"] = ap_dhcp;
-    if(apIP.ip) jstr["ap_ip"]["ip"] = apIP.ip->toString(); 
-    if(apIP.netmask) jstr["ap_ip"]["netmask"] = apIP.netmask->toString();
+    jstr[FPSTR(CONN_AP_PASS)] = ebuf;
+    jstr[FPSTR(CONN_AP_DHCP)] = ap_dhcp;
+    if(apIP.ip) jstr[FPSTR(CONN_AP_IP)][FPSTR(CONN_IP)] = apIP.ip->toString(); 
+    if(apIP.netmask) jstr[FPSTR(CONN_AP_IP)][FPSTR(CONN_NETMASK)] = apIP.netmask->toString();
 
-    jstr["ntp_server"] = ntpServer;
-    jstr["gmt_offset"] = gmtOffset_sec;
-    jstr["dst_offset"] = daylightOffset_sec;
+    jstr[FPSTR(CONN_NTP_SERVER)] = ntpServer;
+    jstr[FPSTR(CONN_GMT_OFFSET)] = gmtOffset_sec;
+    jstr[FPSTR(CONN_DST_OFFSET)] = daylightOffset_sec;
 
-    File file = Storage.open(prefs_file, FILE_WRITE);
-    if(file) {
-        serializeJson(doc, file);
-        file.close();
-        ESP_LOGI(tag,"File %s updated", prefs_file);
-        return OK;
-    }
-    else {
-        ESP_LOGW(tag,"Failed to save connection preferences to file %s", prefs_file);
-        return FAIL;
-    }
-    return OK;
+    return savePrefsToFile(&doc);
 }
 
 void CLAppConn::startOTA() {

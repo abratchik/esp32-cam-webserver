@@ -27,6 +27,10 @@
 
 #include <esp_log.h>
 
+const char STORAGE_SIZE[] PROGMEM = "storage_size";
+const char STORAGE_USED[] PROGMEM = "storage_used";
+const char STORAGE_UNITS_STR[] PROGMEM = "storage_units";
+
 /**
  * @brief Storage Manager
  * Encapsulates access to the file system, which can be either external (SD card) or internal (LittleFS).
