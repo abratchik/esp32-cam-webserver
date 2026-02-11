@@ -12,8 +12,6 @@
 
 #include <esp_log.h>
 
-
-
 #define SSL_MODE true
 #define NO_WAIT false
 #define NOTIFY "SUCCESS,FAILURE,DELAY"
@@ -28,9 +26,9 @@ const char MAIL_SUBJECT[] PROGMEM = "subject";
 const char MAIL_MESSAGE[] PROGMEM = "message";
 const char MAIL_HTML_MESSAGE[] PROGMEM = "html_message";
 
-class CLAppMail : public CLAppComponent {
+class CLAppMailSender : public CLAppComponent {
     public:
-        CLAppMail() {
+        CLAppMailSender() {
             setTag("mail");
             ms = 0;
         };
@@ -61,6 +59,6 @@ class CLAppMail : public CLAppComponent {
 
 };
 
-extern CLAppMail AppMail;
+extern CLAppMailSender AppMailSender;
 
 #endif

@@ -51,8 +51,6 @@ enum StreamResponseEnum {STREAM_SUCCESS,
                          STREAM_IMAGE_CAPTURE_FAILED,
                          STREAM_CLIENT_NOT_FOUND};
 
-// Callback type for binary data transmission
-typedef int (*ProcessFrameCallback)(uint8_t* buffer, size_t size);
 
 String processor(const String& var);
 void onSystemStatus(AsyncWebServerRequest *request);
@@ -98,14 +96,13 @@ class CLAppHttpd : public CLAppComponent {
         unsigned long getImagesServed() {return _imagesServed;};
         int getPwmCount() {return _pwmCount;};
         void incImagesServed(){_imagesServed++;};
-        
-        // capture a frame and send it to the clients
-        int snapFrame(ProcessFrameCallback sendCallback = nullptr);
 
         // start stream
         StreamResponseEnum startStream(uint32_t id, CaptureModeEnum stream_mode);
         //terminate stream
         StreamResponseEnum stopStream(uint32_t id);
+
+        int onSnapFrame(uint8_t* buffer, size_t size);
 
         void setFrameRate(int frameRate);
 

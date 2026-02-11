@@ -11,8 +11,17 @@ CLAppHttpd::CLAppHttpd() {
 #endif
 }
 
+int IRAM_ATTR onSnapFrameCallback(uint8_t* buffer, size_t size) {
+    return AppHttpd.onSnapFrame(buffer, size);
+}
+
 void IRAM_ATTR onSnapTimer(TimerHandle_t pxTimer){
-    AppHttpd.snapFrame();
+    AppCam.snapFrame(onSnapFrameCallback);
+}
+
+int IRAM_ATTR CLAppHttpd::onSnapFrame(uint8_t* buffer, size_t size) {
+    return ws->binaryAll(AppCam.getBuffer(), AppCam.getBufferSize()) != 
+           AsyncWebSocket::SendStatus::DISCARDED?OK:FAIL;;
 }
 
 int CLAppHttpd::start() {
@@ -190,29 +199,6 @@ String processor(const String& var) {
     return String();
 }
 
-int IRAM_ATTR CLAppHttpd::snapFrame(ProcessFrameCallback sendCallback) {
-    int res = AppCam.snapToBuffer();
-
-    if(!res) {
-
-        if(AppCam.isJPEGinBuffer()){
-            if(sendCallback) {
-                int res = sendCallback(AppCam.getBuffer(), AppCam.getBufferSize());
-            } else {
-                // Default behavior: send via websocket
-                int res = ws->binaryAll(AppCam.getBuffer(), AppCam.getBufferSize()) != 
-                                        AsyncWebSocket::SendStatus::DISCARDED?OK:FAIL;
-            }
-
-        } else {
-            res = OK;
-        }
-    }
-
-    AppCam.releaseBuffer();
-    return res;
-}
-
 StreamResponseEnum CLAppHttpd::startStream(uint32_t id, CaptureModeEnum streammode) {
     
     // if video stream requested, check if we can add extra
@@ -251,7 +237,7 @@ StreamResponseEnum CLAppHttpd::startStream(uint32_t id, CaptureModeEnum streammo
 
             int64_t fr_start = esp_timer_get_time();
         
-            if (snapFrame() != OK) {
+            if (AppCam.snapFrame(onSnapFrameCallback) != OK) {
                 if(_autoLamp) setLamp(0);
                 return STREAM_IMAGE_CAPTURE_FAILED;
             }

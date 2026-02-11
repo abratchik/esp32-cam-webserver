@@ -159,6 +159,23 @@ void IRAM_ATTR CLAppCam::releaseBuffer() {
     }
 }
 
+int IRAM_ATTR CLAppCam::snapFrame(ProcessFrameCallback sendCallback) {
+
+    int res = AppCam.snapToBuffer();
+
+    if(!res) {
+
+        if(isJPEGinBuffer()){
+            res = sendCallback?sendCallback(getBuffer(), getBufferSize()):FAIL;
+        } else {
+            res = FAIL;
+        }
+    }
+
+    releaseBuffer();
+    return res;
+}
+
 void CLAppCam::dumpStatusToJson(JsonObject jstr, bool full_status) {
  
     jstr["rotate"] = myRotation;
@@ -203,7 +220,5 @@ void CLAppCam::dumpStatusToJson(JsonObject jstr, bool full_status) {
     jstr[FPSTR(CAM_XCLK)] = xclk;
 
 }
-
-
 
 CLAppCam AppCam;

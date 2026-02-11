@@ -83,7 +83,7 @@ void setup() {
 
 #ifdef ENABLE_MAIL_FEATURE
     // Start the mail client if enabled
-    AppMail.start();
+    AppMailSender.start();
 #endif
 
     // Start the web server
@@ -120,7 +120,7 @@ void loop() {
             }
             AppHttpd.cleanupWsClients();
         #ifdef ENABLE_MAIL_FEATURE
-            AppMail.process();
+            AppMailSender.process();
         #endif
         } else {
             // disconnected; notify 

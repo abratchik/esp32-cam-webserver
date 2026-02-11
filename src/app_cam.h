@@ -51,6 +51,8 @@ const char CAM_DCW[] PROGMEM = "dcw";
 const char CAM_COLORBAR[] PROGMEM = "colorbar";
 const char CAM_XCLK[] PROGMEM = "xclk";
 
+// Callback type for binary data transmission
+typedef int (*ProcessFrameCallback)(uint8_t* buffer, size_t size);
 
 /**
  * @brief Camera Manager
@@ -80,6 +82,7 @@ class CLAppCam : public CLAppComponent {
         int getRotation() {return myRotation;};
 
         int snapToBuffer();
+        int IRAM_ATTR snapFrame(ProcessFrameCallback sendCallback);
         uint8_t * IRAM_ATTR getBuffer() {return (fb?fb->buf:nullptr);};
         size_t IRAM_ATTR getBufferSize() {return (fb?fb->len:0);};
         bool IRAM_ATTR isJPEGinBuffer() {return (fb?fb->format == PIXFORMAT_JPEG:false);};

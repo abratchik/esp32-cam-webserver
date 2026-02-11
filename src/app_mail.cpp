@@ -2,14 +2,14 @@
 
 void smtpStatusCallback(SMTPStatus status) {
     if (status.progress.available) {
-        ESP_LOGI(AppMail.getTag(), "[smtp][%d] Uploading file %s, %d %% completed", status.state,
+        ESP_LOGI(AppMailSender.getTag(), "[smtp][%d] Uploading file %s, %d %% completed", status.state,
                          status.progress.filename.c_str(), status.progress.value);
     }
     else
-        ESP_LOGI(AppMail.getTag(), "[smtp][%d]%s\n", status.state, status.text.c_str());
+        ESP_LOGI(AppMailSender.getTag(), "[smtp][%d]%s\n", status.state, status.text.c_str());
 }
 
-int CLAppMail::start() {
+int CLAppMailSender::start() {
     int ret = loadPrefs();
     if(ret != OK) {
         return ret;
@@ -24,7 +24,7 @@ int CLAppMail::start() {
     return OK;
 }
 
-int CLAppMail::loadPrefs() {
+int CLAppMailSender::loadPrefs() {
     JsonDocument doc;
     int ret  = parsePrefs(&doc);
     if(ret != OK) {
@@ -45,7 +45,7 @@ int CLAppMail::loadPrefs() {
     return configured?OK:FAIL;
 }
 
-int CLAppMail::savePrefs() {
+int CLAppMailSender::savePrefs() {
     JsonDocument doc;
     JsonObject jstr = doc.to<JsonObject>();
 
@@ -64,7 +64,7 @@ int CLAppMail::savePrefs() {
     return savePrefsToFile(&doc);
 }
 
-void CLAppMail::sendMail() {
+void CLAppMailSender::sendMail() {
     if(!isConfigured()) {
         ESP_LOGE(tag, "SMTP client not initialized");
         return;
@@ -88,7 +88,11 @@ void CLAppMail::sendMail() {
 }
 
 
-void CLAppMail::process() {
+void CLAppMailSender::process() {
+    if(!isConfigured()) {
+        return;
+    }
+
     if(!smtp_client) {
         return;
     }
@@ -112,4 +116,6 @@ void CLAppMail::process() {
         sendMail();
     }
 }
+
+CLAppMailSender AppMailSender;
 
