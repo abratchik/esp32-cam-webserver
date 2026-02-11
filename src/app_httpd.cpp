@@ -11,15 +11,15 @@ CLAppHttpd::CLAppHttpd() {
 #endif
 }
 
-int IRAM_ATTR onSnapFrameCallback(uint8_t* buffer, size_t size) {
-    return AppHttpd.onSnapFrame(buffer, size);
+int IRAM_ATTR bcastBufImgCallback(uint8_t* buffer, size_t size) {
+    return AppHttpd.bcastBufImg(buffer, size);
 }
 
 void IRAM_ATTR onSnapTimer(TimerHandle_t pxTimer){
-    AppCam.snapFrame(onSnapFrameCallback);
+    AppCam.snapFrame(bcastBufImgCallback);
 }
 
-int IRAM_ATTR CLAppHttpd::onSnapFrame(uint8_t* buffer, size_t size) {
+int IRAM_ATTR CLAppHttpd::bcastBufImg(uint8_t* buffer, size_t size) {
     return ws->binaryAll(AppCam.getBuffer(), AppCam.getBufferSize()) != 
            AsyncWebSocket::SendStatus::DISCARDED?OK:FAIL;;
 }
@@ -237,7 +237,7 @@ StreamResponseEnum CLAppHttpd::startStream(uint32_t id, CaptureModeEnum streammo
 
             int64_t fr_start = esp_timer_get_time();
         
-            if (AppCam.snapFrame(onSnapFrameCallback) != OK) {
+            if (AppCam.snapFrame(bcastBufImgCallback) != OK) {
                 if(_autoLamp) setLamp(0);
                 return STREAM_IMAGE_CAPTURE_FAILED;
             }
@@ -604,8 +604,10 @@ void CLAppHttpd::dumpSystemStatusToJson(char * buf, size_t size) {
 }
 
 void CLAppHttpd::serialSendCommand(const char *cmd) {
+#ifdef ENABLE_SERIAL_COMMANDS
     Serial.print("^");
     Serial.println(cmd);
+#endif
 }
 
 int CLAppHttpd::loadPrefs() {

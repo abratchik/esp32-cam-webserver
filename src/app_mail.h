@@ -3,6 +3,7 @@
 
 #include "app_defines.h"
 #include "app_component.h"
+#include "app_cam.h"
 
 #define ENABLE_SMTP
 #define ENABLE_DEBUG
@@ -34,12 +35,16 @@ class CLAppMailSender : public CLAppComponent {
         };
 
         int start();
+        void process();
+
         int loadPrefs();
         int savePrefs();
+    
+        int mailImage();
+        int storeBufImg(uint8_t* buffer, size_t size);
 
+    protected:
         void sendMail();
-
-        void process();
 
     private:
         String username;

@@ -102,7 +102,7 @@ class CLAppHttpd : public CLAppComponent {
         //terminate stream
         StreamResponseEnum stopStream(uint32_t id);
 
-        int onSnapFrame(uint8_t* buffer, size_t size);
+        int bcastBufImg(uint8_t* buffer, size_t size);
 
         void setFrameRate(int frameRate);
 

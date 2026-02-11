@@ -63,6 +63,7 @@
  */
 
 // #define ENABLE_MAIL_FEATURE  
+// #define ENABLE_SERIAL_COMMANDS
 
 
 #endif

@@ -166,7 +166,12 @@ void handleSerial() {
         if (cmd == '#' ) {
             String rsp = Serial.readStringUntil('\n');
             rsp.trim();
-            snprintf(AppHttpd.getSerialBuffer(), SERIAL_BUFFER_SIZE, rsp.c_str());
+            if(rsp == "M") {
+                AppMailSender.mailImage();
+            }
+            else {
+                snprintf(AppHttpd.getSerialBuffer(), SERIAL_BUFFER_SIZE, rsp.c_str());
+            }
         }
     }
 }

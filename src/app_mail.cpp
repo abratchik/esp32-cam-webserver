@@ -64,6 +64,26 @@ int CLAppMailSender::savePrefs() {
     return savePrefsToFile(&doc);
 }
 
+int IRAM_ATTR storeBufImgCallback(uint8_t* buffer, size_t size) {
+    return AppMailSender.storeBufImg(buffer, size);
+}
+
+int CLAppMailSender::mailImage() {
+    ESP_LOGI(tag, "Mailing image...");
+    return AppCam.snapFrame(storeBufImgCallback);
+}
+
+int CLAppMailSender::storeBufImg(uint8_t* buffer, size_t size) {
+    if(!buffer || !size) {
+        return FAIL;
+    }
+
+    // store the image in the file system and set the path to the message
+    // for later retrieval when sending the email
+
+    return OK;
+}
+
 void CLAppMailSender::sendMail() {
     if(!isConfigured()) {
         ESP_LOGE(tag, "SMTP client not initialized");
