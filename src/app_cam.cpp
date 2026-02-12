@@ -81,55 +81,74 @@ int CLAppCam::stop() {
 }
 
 int CLAppCam::loadPrefs() {
-    JsonDocument jdoc;
+    JsonDocument doc;
 
-    int ret  = parsePrefs(&jdoc);
+    int ret  = parsePrefs(&doc);
     if(ret != OK) {
         return ret;
     }
 
     // process local settings    
-    frameRate = jdoc[FPSTR(CAM_FRAME_RATE)];
-    xclk = jdoc[FPSTR(CAM_XCLK)];
-    myRotation = jdoc["rotate"];
+    frameRate = doc[FPSTR(CAM_FRAME_RATE)];
+    xclk = doc[FPSTR(CAM_XCLK)];
+    myRotation = doc["rotate"];
 
     // get sensor reference
     sensor_t * s = esp_camera_sensor_get();
-    JsonObject jctx = jdoc.as<JsonObject>();
+    JsonObject jctx = doc.as<JsonObject>();
     // process camera settings
     if(s) {
-        s->set_framesize(s, (framesize_t)jdoc[FPSTR(CAM_FRAMESIZE)].as<int>());
-        s->set_quality(s, jdoc[FPSTR(CAM_QUALITY)].as<int>());
+        s->set_framesize(s, (framesize_t)doc[FPSTR(CAM_FRAMESIZE)].as<int>());
+        s->set_quality(s, doc[FPSTR(CAM_QUALITY)].as<int>());
         s->set_xclk(s, LEDC_TIMER_0, xclk);
-        s->set_brightness(s, jdoc[FPSTR(CAM_BRIGHTNESS)].as<int>());
-        s->set_contrast(s, jdoc[FPSTR(CAM_CONTRAST)].as<int>());
-        s->set_saturation(s, jdoc[FPSTR(CAM_SATURATION)].as<int>());
-        s->set_sharpness(s, jdoc[ FPSTR(CAM_SHARPNESS)].as<int>());
-        s->set_denoise(s, jdoc[FPSTR(CAM_DENOISE)].as<int>());
-        s->set_special_effect(s, jdoc[FPSTR(CAM_SPECIAL_EFFECT)].as<int>());
-        s->set_wb_mode(s, jdoc[FPSTR(CAM_WB_MODE)].as<int>());
-        s->set_whitebal(s, jdoc[FPSTR(CAM_AWB)].as<int>());
-        s->set_awb_gain(s, jdoc[FPSTR(CAM_AWB_GAIN)].as<int>());
-        s->set_exposure_ctrl(s,jdoc[FPSTR(CAM_AEC)].as<int>());
-        s->set_aec2(s, jdoc[FPSTR(CAM_AEC2)].as<int>());
-        s->set_ae_level(s, jdoc[FPSTR(CAM_AE_LEVEL)].as<int>());
-        s->set_aec_value(s, jdoc[FPSTR(CAM_AEC_VALUE)].as<int>());
-        s->set_gain_ctrl(s, jdoc[FPSTR(CAM_AGC)].as<int>());
-        s->set_agc_gain(s, jdoc[FPSTR(CAM_AGC_GAIN)].as<int>());
-        s->set_gainceiling(s, (gainceiling_t)jdoc[FPSTR(CAM_GAINCEILING)].as<int>());
-        s->set_bpc(s, jdoc[FPSTR(CAM_BPC)].as<int>());
-        s->set_wpc(s, jdoc[FPSTR(CAM_WPC)].as<int>());
-        s->set_raw_gma(s, jdoc[FPSTR(CAM_RAW_GMA)].as<int>());
-        s->set_lenc(s, jdoc[FPSTR(CAM_LENC)].as<int>());
-        s->set_vflip(s, jdoc[FPSTR(CAM_VFLIP)].as<int>());
-        s->set_hmirror(s, jdoc[FPSTR(CAM_HMIRROR)].as<int>());
-        s->set_dcw(s, jdoc[FPSTR(CAM_DCW)].as<int>());
-        s->set_colorbar(s, jdoc[FPSTR(CAM_COLORBAR)].as<int>());
+        s->set_brightness(s, doc[FPSTR(CAM_BRIGHTNESS)].as<int>());
+        s->set_contrast(s, doc[FPSTR(CAM_CONTRAST)].as<int>());
+        s->set_saturation(s, doc[FPSTR(CAM_SATURATION)].as<int>());
+        s->set_sharpness(s, doc[ FPSTR(CAM_SHARPNESS)].as<int>());
+        s->set_denoise(s, doc[FPSTR(CAM_DENOISE)].as<int>());
+        s->set_special_effect(s, doc[FPSTR(CAM_SPECIAL_EFFECT)].as<int>());
+        s->set_wb_mode(s, doc[FPSTR(CAM_WB_MODE)].as<int>());
+        s->set_whitebal(s, doc[FPSTR(CAM_AWB)].as<int>());
+        s->set_awb_gain(s, doc[FPSTR(CAM_AWB_GAIN)].as<int>());
+        s->set_exposure_ctrl(s,doc[FPSTR(CAM_AEC)].as<int>());
+        s->set_aec2(s, doc[FPSTR(CAM_AEC2)].as<int>());
+        s->set_ae_level(s, doc[FPSTR(CAM_AE_LEVEL)].as<int>());
+        s->set_aec_value(s, doc[FPSTR(CAM_AEC_VALUE)].as<int>());
+        s->set_gain_ctrl(s, doc[FPSTR(CAM_AGC)].as<int>());
+        s->set_agc_gain(s, doc[FPSTR(CAM_AGC_GAIN)].as<int>());
+        s->set_gainceiling(s, (gainceiling_t)doc[FPSTR(CAM_GAINCEILING)].as<int>());
+        s->set_bpc(s, doc[FPSTR(CAM_BPC)].as<int>());
+        s->set_wpc(s, doc[FPSTR(CAM_WPC)].as<int>());
+        s->set_raw_gma(s, doc[FPSTR(CAM_RAW_GMA)].as<int>());
+        s->set_lenc(s, doc[FPSTR(CAM_LENC)].as<int>());
+        s->set_vflip(s, doc[FPSTR(CAM_VFLIP)].as<int>());
+        s->set_hmirror(s, doc[FPSTR(CAM_HMIRROR)].as<int>());
+        s->set_dcw(s, doc[FPSTR(CAM_DCW)].as<int>());
+        s->set_colorbar(s, doc[FPSTR(CAM_COLORBAR)].as<int>());
         
     }
     else {
         ESP_LOGW(tag,"Failed to get camera handle. Camera settings skipped");
     }
+
+    _lampVal = doc[FPSTR(CAM_LAMP)] | -1;
+    _autoLamp = doc[FPSTR(CAM_AUTOLAMP)] | false;
+    _flashLamp = doc[FPSTR(CAM_FLASHLAMP)] | 0;
+
+    AppPwm.loadPrefsFromJson(doc.as<JsonObject>());
+
+    // First PWM shoudl be reserved for the lamp, if defined.
+    ESP32PWM* lampPWM = AppPwm.get(0);
+    if( lampPWM != nullptr && _lampVal >= 0) 
+    { 
+        _lamppin = lampPWM->getPin(); 
+        _pwmMax = pow(2, lampPWM->getResolutionBits())-1; 
+        ESP_LOGI(tag,"Flash lamp activated on pin %d", _lamppin); 
+    } 
+    else 
+    { 
+        ESP_LOGW(tag,"No PWM configured for flash lamp"); 
+    }  
   
     // close the file
     return ret;
@@ -137,12 +156,12 @@ int CLAppCam::loadPrefs() {
 
 int CLAppCam::savePrefs(){
 
-    JsonDocument jdoc;
-    JsonObject jstr = jdoc.to<JsonObject>();
+    JsonDocument doc;
+    JsonObject jstr = doc.to<JsonObject>();
 
     dumpStatusToJson(jstr);
 
-    return savePrefsToFile(&jdoc);
+    return savePrefsToFile(&doc);
 
 }
 
@@ -174,6 +193,46 @@ int IRAM_ATTR CLAppCam::snapFrame(ProcessFrameCallback sendCallback) {
 
     releaseBuffer();
     return res;
+}
+
+int CLAppCam::snapStillImage(ProcessFrameCallback sendCallback) {
+
+    if(_lampVal>=0 && _autoLamp){
+        setLamp(_flashLamp);
+        delay(150); // coupled with the status led flash this gives ~150ms for lamp to settle.
+    }
+
+    int64_t fr_start = esp_timer_get_time();
+        
+    if (snapFrame(sendCallback) != OK) {
+        if(_autoLamp) setLamp(0);
+        return FAIL;
+    }
+        
+#if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
+    int64_t fr_end = esp_timer_get_time();
+    ESP_LOGD(tag,"B %ums", (uint32_t)((fr_end - fr_start)/1000));
+#endif
+
+    if(_autoLamp) setLamp(0);
+
+    return OK;
+}
+
+// Lamp Control
+void CLAppCam::setLamp(int newVal) {
+
+    if(newVal == DEFAULT_FLASH) {
+        newVal = _flashLamp;
+    }
+    _lampVal = newVal;
+    
+    // Apply a logarithmic function to the scale.
+    if(_lamppin) {
+        int brightness = round(_lampVal * _pwmMax/100.00);
+        AppPwm.write(_lamppin, brightness,0);
+    }
+
 }
 
 void CLAppCam::dumpStatusToJson(JsonObject jstr, bool full_status) {
@@ -219,6 +278,13 @@ void CLAppCam::dumpStatusToJson(JsonObject jstr, bool full_status) {
 
     jstr[FPSTR(CAM_XCLK)] = xclk;
 
+    jstr[FPSTR(CAM_LAMP)] = getLamp();
+    jstr[FPSTR(CAM_AUTOLAMP)] = isAutoLamp();
+    jstr[FPSTR(CAM_FLASHLAMP)] = getFlashLamp(); 
+
+    AppPwm.savePrefsToJson(jstr);
+
 }
+
 
 CLAppCam AppCam;

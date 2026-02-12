@@ -8,25 +8,15 @@
 #include <ArduinoJson.h>
 
 #include "app_defines.h"
-#include "esp32pwm.h"
 
 #include "storage.h"
 #include "app_conn.h"
 #include "app_cam.h"
+#include "app_pwm.h"
 
 #include <esp_log.h>
 
 #define MAX_URI_MAPPINGS                32
-
-#define PWM_DEFAULT_FREQ                50
-#define PWM_DEFAULT_RESOLUTION_BITS     10
-
-#define DEFAULT_uS_LOW                  544
-#define DEFAULT_uS_HIGH                 2400
-
-#define DEFAULT_FLASH                   0xFF
-
-#define RESET_ALL_PWM                   0
 
 #define SERIAL_BUFFER_SIZE              64
 
@@ -94,7 +84,7 @@ class CLAppHttpd : public CLAppComponent {
         int8_t getStreamCount() {return _streamCount;};
         long getStreamsServed() {return _streamsServed;};
         unsigned long getImagesServed() {return _imagesServed;};
-        int getPwmCount() {return _pwmCount;};
+
         void incImagesServed(){_imagesServed++;};
 
         // start stream
@@ -119,44 +109,8 @@ class CLAppHttpd : public CLAppComponent {
 
         char * getSerialBuffer() {return serialBuffer;};
 
-        void setAutoLamp(bool val) {_autoLamp = val;};
-        bool isAutoLamp() { return _autoLamp;};   
-        int getFlashLamp() {return _flashLamp;}; 
-        void setFlashLamp(int newVal) {_flashLamp = newVal;};
-
-        void setLamp(int newVal = DEFAULT_FLASH);
-        int getLamp() {return _lampVal;};    
-
         void dumpSystemStatusToJson(char * buf, size_t size);
         void dumpCameraStatusToJson(char * buf, size_t size, bool full = true);
-
-        /**
-         * @brief attaches a new PWM/servo and returns its ID in case of success, or OS_FAIL otherwise
-         * 
-         * @param pin 
-         * @param freq
-         * @param resolution_bits
-         * @return int 
-         */
-        int attachPWM(uint8_t pin, double freq = PWM_DEFAULT_FREQ, uint8_t resolution_bits = PWM_DEFAULT_RESOLUTION_BITS);
-        
-        /**
-         * @brief writes an angle value to PWM/Servo.
-         * 
-         * @param pin 
-         * @param value 
-         * @param min_v
-         * @param max_v
-         * @return int 
-         */
-        int writePWM(uint8_t pin, int value, int min_v = DEFAULT_uS_LOW, int max_v = DEFAULT_uS_HIGH);
-
-        /**
-         * @brief Set all PWM to its default value. If the default was not defined, it will be reset to 0
-         * 
-         * @param pin 
-         */
-        void resetPWM(uint8_t pin = RESET_ALL_PWM);
 
         uint8_t getTemp() {return temperatureRead();};
         
@@ -165,9 +119,6 @@ class CLAppHttpd : public CLAppComponent {
         UriMapping *mappingList[MAX_URI_MAPPINGS]; 
         int _mappingCount=0;
 
-        ESP32PWM *pwm[NUM_PWM];
-
-        int _pwmCount = 0;
 
         // Name of the application used in web interface
         // Can be re-defined in the httpd.json file
@@ -184,14 +135,6 @@ class CLAppHttpd : public CLAppComponent {
         uint32_t _control_client;
         
         TimerHandle_t _stream_timer = NULL;
-        
-        // Flash LED lamp parameters.
-        // should be defined in the 1st line of the pwm collection in the httpd prefs (httpd.json)
-        bool _autoLamp = false;         // Automatic lamp (auto on while camera running)
-        int _lampVal = -1;              // Lamp brightness
-        int _flashLamp = 80;            // Flash brightness when taking still images or capturing streams
-        uint8_t _lamppin = 0;           // Lamp pin, not defined by default
-        int _pwmMax = 1;                // _pwmMax = pow(2,pwmresolution)-1;
 
         int8_t _streamCount=0;
 

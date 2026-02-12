@@ -48,7 +48,7 @@ int CLAppComponent::parsePrefs(JsonDocument *doc) {
   String pref_json;
 
   if(Storage.readFileToString(pref_file, &pref_json) != OK) {
-      ESP_LOGE(tag, "Failed to open the connection settings from %s", pref_file);
+      ESP_LOGE(tag, "Failed to open settings from %s", pref_file);
       return FAIL;
   }
 

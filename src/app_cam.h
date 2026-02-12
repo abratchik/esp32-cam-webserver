@@ -3,6 +3,8 @@
 
 #define CAM_DUMP_BUFFER_SIZE   1024
 
+#define DEFAULT_FLASH                   0xFF
+
 #include <esp_camera.h>
 #include <esp_int_wdt.h>
 #include <esp_task_wdt.h>
@@ -10,6 +12,7 @@
 
 #include "app_component.h"
 #include "camera_pins.h"
+#include "app_pwm.h"
 
 #include <esp_log.h>
 
@@ -81,14 +84,26 @@ class CLAppCam : public CLAppComponent {
         void setRotation(int val) {myRotation = val;};
         int getRotation() {return myRotation;};
 
-        int snapToBuffer();
         int IRAM_ATTR snapFrame(ProcessFrameCallback sendCallback);
-        uint8_t * IRAM_ATTR getBuffer() {return (fb?fb->buf:nullptr);};
-        size_t IRAM_ATTR getBufferSize() {return (fb?fb->len:0);};
-        bool IRAM_ATTR isJPEGinBuffer() {return (fb?fb->format == PIXFORMAT_JPEG:false);};
-        void releaseBuffer(); 
+
+        int snapStillImage(ProcessFrameCallback sendCallback);
 
         void dumpStatusToJson(JsonObject jstr, bool full_status = true);
+
+        void setAutoLamp(bool val) {_autoLamp = val;};
+        bool isAutoLamp() { return _autoLamp;};   
+        int getFlashLamp() {return _flashLamp;}; 
+        void setFlashLamp(int newVal) {_flashLamp = newVal;};
+
+        void setLamp(int newVal = DEFAULT_FLASH);
+        int getLamp() {return _lampVal;};    
+    
+    protected:
+        int IRAM_ATTR snapToBuffer();
+        void IRAM_ATTR releaseBuffer(); 
+        bool IRAM_ATTR isJPEGinBuffer() {return (fb?fb->format == PIXFORMAT_JPEG:false);};
+        uint8_t * IRAM_ATTR getBuffer() {return (fb?fb->buf:nullptr);};
+        size_t IRAM_ATTR getBufferSize() {return (fb?fb->len:0);};
 
     private:
         // Camera config structure
@@ -101,14 +116,15 @@ class CLAppCam : public CLAppComponent {
         int xclk = 8;
 
         // frame rate in FPS
-        // default can be set in /default_prefs.json
         int frameRate = 25;
 
-
-        int lampChannel = 7;           // a free PWM channel (some channels used by camera)
-        const int pwmfreq = 50000;     // 50K pwm frequency
-        const int pwmresolution = 9;   // duty cycle bit range
-        const int pwmMax = pow(2,pwmresolution)-1;
+        // Flash LED lamp parameters.
+        // should be defined in the 1st line of the pwm collection in the cam prefs (cam.json)
+        bool _autoLamp = false;         // Automatic lamp (auto on while camera running)
+        int _lampVal = -1;              // Lamp brightness
+        int _flashLamp = 80;            // Flash brightness when taking still images or capturing streams
+        uint8_t _lamppin = 0;           // Lamp pin, not defined by default
+        int _pwmMax = 1;                // _pwmMax = pow(2,pwmresolution)-1;
 
         // Critical error string; if set during init (camera hardware failure) it
         // will be returned for stream and still image requests

@@ -69,8 +69,7 @@ int IRAM_ATTR storeBufImgCallback(uint8_t* buffer, size_t size) {
 }
 
 int CLAppMailSender::mailImage() {
-    ESP_LOGI(tag, "Mailing image...");
-    return AppCam.snapFrame(storeBufImgCallback);
+    return AppCam.snapStillImage(storeBufImgCallback);
 }
 
 int CLAppMailSender::storeBufImg(uint8_t* buffer, size_t size) {

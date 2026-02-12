@@ -25,5 +25,8 @@
     "dcw":1,
     "colorbar":0,
     "rotate":"0", 
-    "debug_mode": false
+    "lamp":0,
+    "autolamp":true,
+    "flashlamp":100,
+    "pwm": [{"pin":4, "frequency":50000, "resolution":9, "default":0}]
 }

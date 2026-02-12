@@ -20,7 +20,7 @@ void IRAM_ATTR onSnapTimer(TimerHandle_t pxTimer){
 }
 
 int IRAM_ATTR CLAppHttpd::bcastBufImg(uint8_t* buffer, size_t size) {
-    return ws->binaryAll(AppCam.getBuffer(), AppCam.getBufferSize()) != 
+    return ws->binaryAll(buffer, size) != 
            AsyncWebSocket::SendStatus::DISCARDED?OK:FAIL;;
 }
 
@@ -113,7 +113,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
         AppHttpd.stopStream(client->id());        
         if(AppHttpd.getControlClient() == client->id()) {
             AppHttpd.setControlClient(0);
-            AppHttpd.resetPWM(RESET_ALL_PWM);
+            AppPwm.reset(RESET_ALL_PWM);
             AppHttpd.serialSendCommand("Disconnected");
         }
     }
@@ -158,9 +158,9 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
                         ESP_LOGD(AppHttpd.getTag(),"vlen %d nparams %d value %d", vlen, nparams, value);
 
                         if(nparams == 1)
-                            AppHttpd.writePWM(pin, value); // write to servo
+                            AppPwm.write(pin, value); // write to servo
                         else
-                            AppHttpd.writePWM(pin, value, 0); // write to raw PWM
+                            AppPwm.write(pin, value, 0); // write to raw PWM
                     }
                 break;
             case (uint8_t)'t':  // terminate stream
@@ -230,24 +230,11 @@ StreamResponseEnum CLAppHttpd::startStream(uint32_t id, CaptureModeEnum streammo
         ESP_LOGI(tag,"Still image requested");
         // if video stream is not active, take the picture as usual
         if(xTimerIsTimerActive(_stream_timer) == pdFALSE) {
-            if(_lampVal>=0 && _autoLamp){
-                setLamp(_flashLamp);
-                delay(150); // coupled with the status led flash this gives ~150ms for lamp to settle.
-            }
-
-            int64_t fr_start = esp_timer_get_time();
         
-            if (AppCam.snapFrame(bcastBufImgCallback) != OK) {
-                if(_autoLamp) setLamp(0);
+            if (AppCam.snapStillImage(bcastBufImgCallback) != OK) {
                 return STREAM_IMAGE_CAPTURE_FAILED;
             }
         
-        #if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
-            int64_t fr_end = esp_timer_get_time();
-            ESP_LOGD(AppHttpd.getTag(),"B %ums", (uint32_t)((fr_end - fr_start)/1000));
-        #endif
-
-            if(_autoLamp) setLamp(0);
             _imagesServed++;
             
         }
@@ -272,17 +259,17 @@ StreamResponseEnum CLAppHttpd::stopStream(uint32_t id) {
     if(xTimerIsTimerActive(_stream_timer) != pdFALSE && _streamCount == 1) {
         vTimerSetReloadMode(_stream_timer, pdFALSE);
         if(xTimerStop(_stream_timer, 0) == pdPASS)
-            ESP_LOGI(AppHttpd.getTag(),"Stop sent to Stream timer");
+            ESP_LOGI(tag,"Stop sent to Stream timer");
         else
-            ESP_LOGW(AppHttpd.getTag(),"Failed to post the stop command to the Stream timer!");
+            ESP_LOGW(tag,"Failed to post the stop command to the Stream timer!");
 
-        if(_lampVal>0 and _autoLamp) setLamp(0);     
+        if(AppCam.getLamp()>0 and AppCam.isAutoLamp()) AppCam.setLamp(0);     
     }
     
     _streamsServed++;
     _streamCount--;
     
-    ESP_LOGI(AppHttpd.getTag(),"Stream stopped");
+    ESP_LOGI(tag,"Stream stopped");
     return STREAM_SUCCESS;
 }
 
@@ -352,7 +339,7 @@ void onControl(AsyncWebServerRequest *request) {
     }
     else if(variable == "reboot") {
         request->send(200);
-        if (AppHttpd.getLamp() != -1) AppHttpd.setLamp(0); // kill the lamp; otherwise it can remain on during the soft-reboot
+        if (AppCam.getLamp() != -1) AppCam.setLamp(0); // kill the lamp; otherwise it can remain on during the soft-reboot
         Storage.getFS().end();      // close file storage
         esp_task_wdt_init(3,true);  // schedule a a watchdog panic event for 3 seconds in the future
         esp_task_wdt_add(NULL);
@@ -416,14 +403,14 @@ void onControl(AsyncWebServerRequest *request) {
         AppCam.setFrameRate(val);
         AppHttpd.setFrameRate(val);
     }
-    else if(variable ==  FPSTR(CAM_AUTOLAMP) && AppHttpd.getLamp() != -1) {
-        AppHttpd.setAutoLamp(val);
+    else if(variable ==  FPSTR(CAM_AUTOLAMP) && AppCam.getLamp() != -1) {
+        AppCam.setAutoLamp(val);
     }
-    else if(variable ==  FPSTR(CAM_LAMP) && AppHttpd.getLamp() != -1) {
-        AppHttpd.setLamp(constrain(val,0,100));
+    else if(variable ==  FPSTR(CAM_LAMP) && AppCam.getLamp() != -1) {
+        AppCam.setLamp(constrain(val,0,100));
     }
-    else if(variable ==  FPSTR(CAM_FLASHLAMP) && AppHttpd.getLamp() != -1) {
-        AppHttpd.setFlashLamp(constrain(val,0,100));
+    else if(variable ==  FPSTR(CAM_FLASHLAMP) && AppCam.getLamp() != -1) {
+        AppCam.setFlashLamp(constrain(val,0,100));
     }
     else if(variable == FPSTR(CONN_LOAD_AS_AP)) AppConn.setLoadAsAP(val);
     else if(variable == FPSTR(CONN_AP_CHANNEL)) AppConn.setAPChannel(val);
@@ -505,10 +492,6 @@ void CLAppHttpd::dumpCameraStatusToJson(char * buf, size_t size, bool full_statu
     AppCam.dumpStatusToJson(jstr, full_status);
 
     if(full_status) {
-        
-        jstr[FPSTR(CAM_LAMP)] = getLamp();
-        jstr[FPSTR(CAM_AUTOLAMP)] = isAutoLamp();
-        jstr[FPSTR(CAM_FLASHLAMP)] = getFlashLamp(); 
         jstr[FPSTR(APP_CODE_VERSION_PARAM)] = getVersion();
     }
 
@@ -617,38 +600,7 @@ int CLAppHttpd::loadPrefs() {
         return ret;
     }
     
-    _lampVal = doc[FPSTR(CAM_LAMP)] | -1;
-    _autoLamp = doc[FPSTR(CAM_AUTOLAMP)] | false;
-    _flashLamp = doc[FPSTR(CAM_FLASHLAMP)] | 0;
     _max_streams = doc[FPSTR(HTTPD_MAX_STREAMS)] | 2;
-
-    int pin = 0, freq = 0, resolution = 0, def_val = 0;
-
-    JsonArray jaPWM = doc["pwm"].as<JsonArray>();
-
-    for(JsonObject joPWM : jaPWM) {
-        pin = joPWM["pin"] | 0;
-        freq = joPWM["frequency"] | 0;
-        resolution = joPWM["resolution"] | 0;
-        def_val = joPWM["default"] | 0;
-
-        int index = attachPWM(pin, freq, resolution);
-        delay(75); // let the PWM settle
-        if(index >= 0) {
-            if(_lampVal >= 0 && index == 0) {
-                _lamppin = pin;
-                _pwmMax = pow(2, resolution)-1;
-                ESP_LOGI(tag,"Flash lamp activated on pin %d", _lamppin);
-            }
-
-            if(def_val)  {
-                pwm[index]->setDefaultDuty(def_val);
-                pwm[index]->reset();
-            }
-        }
-        else
-            ESP_LOGW(tag,"Failed to attach PWM to pin %d", pin);
-    }
 
     JsonArray jaMapping = doc[FPSTR(HTTPD_MAPPING)].as<JsonArray>();
 
@@ -679,27 +631,7 @@ int CLAppHttpd::savePrefs() {
     
     jstr["my_name"] = myName;
 
-    jstr[FPSTR(CAM_LAMP)] = _lampVal;
-    jstr[FPSTR(CAM_AUTOLAMP)] = _autoLamp;
-    jstr[FPSTR(CAM_FLASHLAMP)] = _flashLamp;
     jstr[FPSTR(HTTPD_MAX_STREAMS)] = _max_streams;
-
-    if(_pwmCount > 0) {
-
-        JsonArray jaPWM = jstr["pwm"].to<JsonArray>();
-        for(int i=0; i < _pwmCount; i++) 
-        {
-            JsonObject objPWM = jaPWM.add<JsonObject>();
-            objPWM["pin"] = pwm[i]->getPin();
-            objPWM["frequency"] = pwm[i]->getFreq();
-            objPWM["resolution"] = pwm[i]->getResolutionBits();     
-
-            if(pwm[i]->getDefaultDuty())
-                objPWM["default"] = pwm[i]->getDefaultDuty();
-
-        }
-
-    }
 
     if(_mappingCount > 0) {
         JsonArray jaMapping = jstr[FPSTR(HTTPD_MAPPING)].to<JsonArray>();
@@ -714,109 +646,6 @@ int CLAppHttpd::savePrefs() {
     return savePrefsToFile(&doc);
 }
 
-int CLAppHttpd::attachPWM(uint8_t pin, double freq, uint8_t resolution_bits) {
-
-    if(_pwmCount >= NUM_PWM) {
-        ESP_LOGW(tag,"Number of available PWM channels exceeded");
-        return FAIL;
-    }
-
-    for(int i=0; i<_pwmCount; i++) 
-        if(pwm[i]->getPin() == pin) {
-            ESP_LOGW(tag,"Pin %d already utilized");
-            return FAIL; // pin already used
-        }
-
-    ESP32PWM * newpwm = new ESP32PWM();
-    if(!newpwm) {
-        ESP_LOGW(tag,"Failed to create PWM"); 
-        delete newpwm;
-        return FAIL;
-    }
-    
-    newpwm->attachPin(pin, freq, resolution_bits);
-
-    if(!newpwm->attached()) {
-        ESP_LOGW(tag,"Failed to attach PWM on pin %d", pin);
-        delete newpwm;
-        return FAIL;
-    }
-
-    ESP_LOGI(tag,"Created a new PWM channel %d on pin %d (freq=%.2f, bits=%d)", 
-        newpwm->getChannel(), pin, freq, resolution_bits);
-
-    pwm[_pwmCount] = newpwm;
-
-    _pwmCount++;
-
-    return _pwmCount - 1; 
-}
-
-int CLAppHttpd::writePWM(uint8_t pin, int value, int min_v, int max_v) {
-    for(int i=0; i<_pwmCount; i++) {
-        if(pwm[i] && pwm[i]->getPin() == pin) {
-            if(pwm[i]->attached()) {
-                if(min_v > 0) {
-                    // treat values less than MIN_PULSE_WIDTH (500) as angles in degrees 
-                    // (valid values in microseconds are handled as microseconds)
-                    if (value < MIN_PULSE_WIDTH)
-                    {
-                        if (value < 0)
-                            value = 0;
-                        else if (value > 180)
-                            value = 180;
-
-                        value = map(value, 0, 180, min_v, max_v);
-
-                    }
-                    if (value < min_v)          // ensure pulse width is valid
-                        value = min_v;
-                    else if (value > max_v)
-                        value = max_v;
-
-                    value = pwm[i]->usToTicks(value);  // convert to ticks
-
-                }
-                // do the actual write
-                ESP_LOGD(tag,"Write %d to PWM channel %d pin %d min %d max %d", 
-                         value, pwm[i]->getChannel(), pwm[i]->getPin(), min_v, max_v);
-                pwm[i]->write(value);
-                return OK;
-            }
-            else {
-                ESP_LOGW(tag,"PWM write failed: pin %d is not attached", pin);
-                return FAIL;    
-            }
-        }
-    }
-    
-    ESP_LOGW(tag,"PWM write failed: pin %d is not found", pin);
-    return FAIL;
-}
-
-void CLAppHttpd::resetPWM(uint8_t pin) {
-    for(int i=0; i<_pwmCount; i++) {
-        if(pwm[i]->getPin() == pin || pin == RESET_ALL_PWM)
-            pwm[i]->reset();
-    }
-}
-
-
-// Lamp Control
-void CLAppHttpd::setLamp(int newVal) {
-
-    if(newVal == DEFAULT_FLASH) {
-        newVal = _flashLamp;
-    }
-    _lampVal = newVal;
-    
-    // Apply a logarithmic function to the scale.
-    if(_lamppin) {
-        int brightness = round(_lampVal * _pwmMax/100.00);
-        writePWM(_lamppin, brightness,0);
-    }
-
-}
 
 int CLAppHttpd::addStreamClient(uint32_t client_id) {
     for(int i=0; i < _max_streams; i++) {

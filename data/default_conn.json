@@ -12,6 +12,5 @@
     "ap_dhcp":true,
     "ntp_server":"pool.ntp.org",
     "gmt_offset":0,
-    "dst_offset":0,    
-    "debug_mode": false
+    "dst_offset":0
 }
