@@ -10,5 +10,6 @@
 /data/conn.json
 /data/cam.json
 /data/httpd.json
+/data/mail.json
 myconfig.h
 Thumbs.db

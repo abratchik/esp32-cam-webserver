@@ -1,12 +1,22 @@
 #include "app_mail.h"
 
+MailSharedBuffer makeSharedBuffer(const uint8_t *message, size_t len) {
+  auto buffer = std::make_shared<std::vector<uint8_t>>(len);
+  std::memcpy(buffer->data(), message, len);
+  return buffer;
+}
+
 void smtpStatusCallback(SMTPStatus status) {
     if (status.progress.available) {
         ESP_LOGI(AppMailSender.getTag(), "[smtp][%d] Uploading file %s, %d %% completed", status.state,
                          status.progress.filename.c_str(), status.progress.value);
     }
-    else
+    else {
         ESP_LOGI(AppMailSender.getTag(), "[smtp][%d]%s\n", status.state, status.text.c_str());
+        if(status.isComplete) {
+            AppMailSender.resetBuffer();
+        }
+    }
 }
 
 int CLAppMailSender::start() {
@@ -68,26 +78,49 @@ int IRAM_ATTR storeBufImgCallback(uint8_t* buffer, size_t size) {
     return AppMailSender.storeBufImg(buffer, size);
 }
 
-int CLAppMailSender::mailImage() {
+int CLAppMailSender::mailImage(const String& localtime) {
+    _localtime = localtime;
     return AppCam.snapStillImage(storeBufImgCallback);
 }
 
 int CLAppMailSender::storeBufImg(uint8_t* buffer, size_t size) {
+    if(img_in_buffer) {
+        ESP_LOGI(tag, "Unsent image already in buffer, dropping");
+        img_buffer.reset();
+        img_in_buffer = false;
+    }
+
     if(!buffer || !size) {
         return FAIL;
     }
 
+    img_buffer = makeSharedBuffer(buffer, size);
+    img_in_buffer = true;
     // store the image in the file system and set the path to the message
     // for later retrieval when sending the email
 
     return OK;
 }
 
+void addBlobAttachment(SMTPMessage &msg, const uint8_t *blob, size_t size, const String &encoding = "", const String &cid = "")
+{
+    Attachment attachment;
+    attachment.filename = "photo.jpg";
+    attachment.mime = "image/jpeg";
+    attachment.name = "photo.jpg";
+    // The inline content disposition.
+    // Should be matched the image src's cid in html body
+    attachment.content_id = cid;
+    attachment.attach_file.blob = blob;
+    attachment.attach_file.blob_size = size;
+    // Specify only when content is already encoded.
+    attachment.content_encoding = encoding;
+    msg.attachments.add(attachment, cid.length() > 0 ? attach_type_inline : attach_type_attachment);
+}
+
 void CLAppMailSender::sendMail() {
-    if(!isConfigured()) {
-        ESP_LOGE(tag, "SMTP client not initialized");
-        return;
-    }
+
+    ESP_LOGI(tag, "Sending image to %s", to_email.c_str());
 
     SMTPMessage &msg = smtp_client->getMessage();
 
@@ -95,24 +128,36 @@ void CLAppMailSender::sendMail() {
     msg.headers.add(rfc822_header_types::rfc822_from, from_email);
     msg.headers.add(rfc822_header_types::rfc822_to, to_email);
 
-    msg.text.body(message);
+    String txt = message;
+    txt.replace("%TIME%", _localtime);
+    String html = html_message;
+    html.replace("%TIME%", _localtime);
+    msg.text.body(txt);
     if(html_message) {
-        msg.html.body(html_message);
+        msg.html.body("<html><body>" + html + "</body></html>");
     }
     msg.timestamp = time(nullptr);
 
-    // addBlobAttachment(msg, "green.png", "image/png", "green.png", (const uint8_t *)greenImg, strlen(greenImg), "base64");
+    addBlobAttachment(msg, img_buffer->data(), img_buffer->size());
     smtp_client->send(msg, NOTIFY, NO_WAIT);
 
 }
 
 
 void CLAppMailSender::process() {
+    if(!img_in_buffer) {
+        return;
+    }
+
     if(!isConfigured()) {
+        ESP_LOGE(tag, "SMTP client not configured");
+        resetBuffer();
         return;
     }
 
     if(!smtp_client) {
+        ESP_LOGE(tag, "SMTP client not initialized");
+        resetBuffer();
         return;
     }
 
@@ -130,7 +175,7 @@ void CLAppMailSender::process() {
         smtp_client->authenticate(username, password, readymail_auth_password, NO_WAIT);
     }
 
-    if ((millis() - ms > 20 * 1000 || ms == 0) && smtp_client->isAuthenticated()) {
+    if ((millis() - ms > 20 * 1000 || ms == 0) && smtp_client->isAuthenticated() ) {
         ms = millis();
         sendMail();
     }

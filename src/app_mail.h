@@ -11,11 +11,15 @@
 #include <WiFiClientSecure.h>
 #include <ReadyMail.h>
 
+#include <cstring>
+
 #include <esp_log.h>
 
 #define SSL_MODE true
 #define NO_WAIT false
 #define NOTIFY "SUCCESS,FAILURE,DELAY"
+
+using MailSharedBuffer = std::shared_ptr<std::vector<uint8_t>>;
 
 const char MAIL_USERNAME[] PROGMEM = "username";
 const char MAIL_PASSWORD[] PROGMEM = "password";
@@ -40,11 +44,18 @@ class CLAppMailSender : public CLAppComponent {
         int loadPrefs();
         int savePrefs();
     
-        int mailImage();
+        int mailImage(const String& localtime = "");
         int storeBufImg(uint8_t* buffer, size_t size);
+
+        void resetBuffer() {
+            img_buffer.reset();
+            img_in_buffer = false;
+        }
 
     protected:
         void sendMail();
+
+
 
     private:
         String username;
@@ -57,10 +68,15 @@ class CLAppMailSender : public CLAppComponent {
         String message;
         String html_message;
 
+        String _localtime;
+
         unsigned long ms;
 
         WiFiClientSecure* ssl_client;
         SMTPClient* smtp_client;
+
+        MailSharedBuffer img_buffer;
+        bool img_in_buffer = false;
 
 };
 

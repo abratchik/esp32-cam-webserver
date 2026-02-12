@@ -117,11 +117,12 @@ void loop() {
             while (millis() - pingwifi < WIFI_WATCHDOG ) {
                 AppConn.handleOTA();
                 handleSerial();
+            #ifdef ENABLE_MAIL_FEATURE
+                AppMailSender.process();
+            #endif
             }
             AppHttpd.cleanupWsClients();
-        #ifdef ENABLE_MAIL_FEATURE
-            AppMailSender.process();
-        #endif
+
         } else {
             // disconnected; notify 
             notifyDisconnect();
@@ -167,7 +168,7 @@ void handleSerial() {
             String rsp = Serial.readStringUntil('\n');
             rsp.trim();
             if(rsp == "M") {
-                AppMailSender.mailImage();
+                AppMailSender.mailImage(AppConn.getLocalTimeStr());
             }
             else {
                 snprintf(AppHttpd.getSerialBuffer(), SERIAL_BUFFER_SIZE, rsp.c_str());
