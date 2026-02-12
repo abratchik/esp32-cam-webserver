@@ -228,18 +228,12 @@ This file can be also updated via the Web UI.
 ```json
 {
     "my_name": "MY_NAME",
-    "lamp":0,
-    "autolamp":true,
-    "flashlamp":100,
     "max_streams":2,
-    "pwm": [{"pin":4, "frequency":50000, "resolution":9, "default":0}],
     "mapping":[ {"uri":"/img", "path": "/www/img"},
                 {"uri":"/css", "path": "/www/css"},
                 {"uri":"/js", "path": "/www/js"}]
 }
 ```
-The parameter `pwm` allows to configure PWM out, which can be used in various applications (for example,
-to control PTZ camera servo motors)
 
 The parameter `mapping` allows to configure folders with static content for the web server. 
 
@@ -272,9 +266,15 @@ The parameter `mapping` allows to configure folders with static content for the 
     "hmirror":0,
     "dcw":1,
     "colorbar":0,
-    "rotate":"0"
+    "rotate":"0",
+    "lamp":0,
+    "autolamp":true,
+    "flashlamp":100,
+    "pwm": [{"pin":4, "frequency":50000, "resolution":9, "default":0}]
 }
 ```
+The parameter `pwm` allows to configure PWM out, which can be used in various applications (for example,
+to control PTZ camera servo motors)
 
 ### Programming
 
