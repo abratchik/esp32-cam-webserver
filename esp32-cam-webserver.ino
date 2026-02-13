@@ -81,10 +81,16 @@ void setup() {
         AppConn.printLocalTime(true);
     }
 
-#ifdef ENABLE_MAIL_FEATURE
+    #ifdef ENABLE_MAIL_FEATURE
     // Start the mail client if enabled
     AppMailSender.start();
-#endif
+    // mail image if configured
+    if(AppMailSender.isConfigured()) {
+        if(AppMailSender.isSnapOnStart()) {
+            AppMailSender.mailImage(AppConn.getLocalTimeStr());
+        }
+    }
+    #endif
 
     // Start the web server
     AppHttpd.start();
@@ -168,6 +174,7 @@ void handleSerial() {
             String rsp = Serial.readStringUntil('\n');
             rsp.trim();
             if(rsp == "M") {
+                AppConn.updateTimeStr();
                 AppMailSender.mailImage(AppConn.getLocalTimeStr());
             }
             else {

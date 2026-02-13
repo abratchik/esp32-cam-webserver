@@ -202,7 +202,9 @@ int CLAppCam::snapStillImage(ProcessFrameCallback sendCallback) {
         delay(150); // coupled with the status led flash this gives ~150ms for lamp to settle.
     }
 
+#if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
     int64_t fr_start = esp_timer_get_time();
+#endif
         
     if (snapFrame(sendCallback) != OK) {
         if(_autoLamp) setLamp(0);

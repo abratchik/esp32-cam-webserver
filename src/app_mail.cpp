@@ -15,6 +15,9 @@ void smtpStatusCallback(SMTPStatus status) {
         ESP_LOGI(AppMailSender.getTag(), "[smtp][%d]%s\n", status.state, status.text.c_str());
         if(status.isComplete) {
             AppMailSender.resetBuffer();
+            if(AppMailSender.isSleepOnComplete()) {
+                AppMailSender.hybernate();
+            }
         }
     }
 }
@@ -49,6 +52,14 @@ int CLAppMailSender::loadPrefs() {
     subject = doc[FPSTR(MAIL_SUBJECT)] | "";
     message = doc[FPSTR(MAIL_MESSAGE)] | "";
     html_message = doc[FPSTR(MAIL_HTML_MESSAGE)] | "";
+    snaponstart = doc[FPSTR(MAIL_SNAPONSTART)] | false;
+    sleeponcomplete = doc[FPSTR(MAIL_SLEEPONCOMPLETE)] | false;
+    period = doc[FPSTR(MAIL_PERIOD)] | SnapToMailPeriod::NONE;
+    shift = doc[FPSTR(MAIL_SHIFT)] | 0;
+    shift_unit = doc[FPSTR(MAIL_SHIFT_UNIT)] | SnapToMailPeriod::NONE;
+    num_periods = doc[FPSTR(MAIL_NUM_PERIODS)] | 0;
+    start_at = doc[FPSTR(MAIL_START_AT)] | 0;
+    finish_at = doc[FPSTR(MAIL_FINISH_AT)] | 0;
     
     configured = doc[FPSTR(APP_CONFIGURED_PARAM)] | false;
 
@@ -68,6 +79,14 @@ int CLAppMailSender::savePrefs() {
     jstr[FPSTR(MAIL_SUBJECT)] = subject;
     jstr[FPSTR(MAIL_MESSAGE)] = message;
     jstr[FPSTR(MAIL_HTML_MESSAGE)] = html_message;
+    jstr[FPSTR(MAIL_SNAPONSTART)] = snaponstart;
+    jstr[FPSTR(MAIL_SLEEPONCOMPLETE)] = sleeponcomplete;
+    jstr[FPSTR(MAIL_PERIOD)] = period;
+    jstr[FPSTR(MAIL_SHIFT)] = shift;
+    jstr[FPSTR(MAIL_SHIFT_UNIT)] = shift_unit;
+    jstr[FPSTR(MAIL_NUM_PERIODS)] = num_periods;
+    jstr[FPSTR(MAIL_START_AT)] = start_at;
+    jstr[FPSTR(MAIL_FINISH_AT)] = finish_at;
 
     jstr[FPSTR(APP_CONFIGURED_PARAM)] = configured;
 
@@ -105,9 +124,9 @@ int CLAppMailSender::storeBufImg(uint8_t* buffer, size_t size) {
 void addBlobAttachment(SMTPMessage &msg, const uint8_t *blob, size_t size, const String &encoding = "", const String &cid = "")
 {
     Attachment attachment;
-    attachment.filename = "photo.jpg";
-    attachment.mime = "image/jpeg";
-    attachment.name = "photo.jpg";
+    attachment.filename = FPSTR(MAIL_IMG_FILENAME);
+    attachment.mime = IMAGE_MIME;
+    attachment.name = FPSTR(MAIL_IMG_FILENAME);
     // The inline content disposition.
     // Should be matched the image src's cid in html body
     attachment.content_id = cid;
@@ -134,7 +153,7 @@ void CLAppMailSender::sendMail() {
     html.replace("%TIME%", _localtime);
     msg.text.body(txt);
     if(html_message) {
-        msg.html.body("<html><body>" + html + "</body></html>");
+        msg.html.body(html);
     }
     msg.timestamp = time(nullptr);
 

@@ -1,4 +1,4 @@
-# ESP32-CAM WebServer. &nbsp;&nbsp;&nbsp; <span title="Master branch build status">[![CI Status](https://travis-ci.com/easytarget/esp32-cam-webserver.svg?branch=master)](https://travis-ci.com/github/easytarget/esp32-cam-webserver)</span> &nbsp;&nbsp; <span title="ESP EYE">![ESP-EYE logo](assets/logo.svg)</span>
+# ESP32-CAM WebServer. &nbsp;&nbsp;&nbsp; <!--span title="Master branch build status">[![CI Status](https://travis-ci.com/easytarget/esp32-cam-webserver.svg?branch=master)](https://travis-ci.com/github/easytarget/esp32-cam-webserver)</span--> &nbsp;&nbsp; <span title="ESP EYE">![ESP-EYE logo](assets/logo.svg)</span>
 
 This sketch is a fully customizable webcam server based on ESP32-S/ESP32-S3 - based board with camera. 
 It can be used as a starting point for your own webcam solution. 
@@ -17,10 +17,11 @@ webcam use.
 * Using just one IP port, easy for proxying. 
 * Multi-streaming support (display video in two or more browser sessions)
 * Supporting basic authentication
-* Porting the web server to [ESP Async Web Server](https://github.com/me-no-dev/ESPAsyncWebServer). 
+* Porting the web server to [ESP Async Web Server](https://github.com/abratchik/ESPAsyncWebServer). 
 * Storing web pages as separate HTML/CSS/JS files on the storage (can be either a micro SD flash memory card
 or the built-in flash formatted as LittleFS).  This greatly simplifies development of the interface. Basically, one can swap the face of this project just by replacing files on storage file system.
 * Introducing a standard way of attaching and controlling PWM output on the board for different scenarios involving servos and motors 
+* Making unattended snapshot and sending it to a specified e-mail address
 * Compact size of the sketch and low memory utilization
 * Support of new ESP32-S3 board (LILYGO T-SIMCAM)
 
@@ -278,38 +279,7 @@ to control PTZ camera servo motors)
 
 ### Programming
 
-#### AI-Thinker ESP32-CAM
-
-Assuming you are using the latest Espressif Arduino core the `ESP32 Dev Module` board 
-will appear in the ESP32 Arduino section of the boards list. Select this (do not use 
-the `AI-THINKER` entry listed in the boards menu, it is not OTA compatible, and will 
-cause the module to crash and reboot rather than updating if you use it.
-![IDE board config](assets/ota-board-selection.png)
-
-Make sure you select the `Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)` partition 
-scheme and turn `PSRAM` on.
-
-The first time you program (or if OTA is failing) you need to compile and upload the 
-code from the IDE, and when the `Connecting...` appears in the console reboot the ESP32 
-module while keeping **GPIO0** grounded. You can release GPO0 once the sketch is 
-uploading, most boards have a 'boot' button to trigger a reboot.
-
-Once the upload completes (be patient, it can be a bit slow) open the serial monitor 
-in the IDE and reboot the board again without GPIO0 grounded. In the serial monitor 
-you should see the board start, connect to the wifi and then report the IP address 
-it has been assigned.
-
-Once you have the initial upload done and the board is connected to the wifi network 
-you should see it appearing in the `network ports` list of the IDE, and you can upload 
-wirelessly.
-
-#### LILYGO T-SIMCAM
-
-In order to program this board, use the settings as below:
-
-![IDE board config](assets/liligo-ota-board-selection.png)
-
-Please ensure to check all the parameters before uploading as shown above, this is important.
+In order to build and upload the ESP32-CAM WebServer to your board it is best to use [VS Code](https://code.visualstudio.com/) with [PlatformIO](https://platformio.org/) plugin. Just clone the source to your local drive, open the folder in VSC and Platformio will do all the magic for you.
 
 ### Accessing the video stream
 If you need to access the video stream or take still images in a full screen mode (without 
@@ -328,12 +298,14 @@ send commands directly to the camera (eg to automate it, etc) and form, in effec
 an API for the camera.
 * [ESP32 Camera Web Server API](API.md).
 
-## Contributing
+## Credits
 
-Contributions are welcome; please see the [Contribution guidelines](CONTRIBUTING.md).
+This project is the deep refactoring and extension of the [original work](https://github.com/easytarget/esp32-cam-webserver) by Owen Carter ([@easytarget](https://github.com/easytarget)).
 
-## Future plans
+The intent of refactoring was to simplify support and additional features. This become possible due to excellent libraries, which are the foundation of many projects on ESP platform nowadays:
 
-1. Support of other boards and cameras, as well as their extended capabilities. 
-2. Explore how to improve the video quality and further reduce requirements to resources.
+* [ESPAsyncWebServer](https://github.com/ESP32Async/ESPAsyncWebServer)
+* [AsyncTCP](https://github.com/ESP32Async/AsyncTCP/)
+* [ArduinoJson](https://arduinojson.org/)
+* [ReadyMail](https://github.com/mobizt/ReadyMail/)
 
