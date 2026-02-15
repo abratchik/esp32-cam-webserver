@@ -74,22 +74,9 @@ void setup() {
         }
     }
 
-    // Set time via NTP server when enabled
-    if(!AppConn.isAccessPoint()) {
-        AppConn.configNTP();
-        Serial.print("Time: ");
-        AppConn.printLocalTime(true);
-    }
-
     #ifdef ENABLE_MAIL_FEATURE
     // Start the mail client if enabled
     AppMailSender.start();
-    // mail image if configured
-    if(AppMailSender.isConfigured()) {
-        if(AppMailSender.isSnapOnStart()) {
-            AppMailSender.mailImage(AppConn.getLocalTimeStr());
-        }
-    }
     #endif
 
     // Start the web server
@@ -117,13 +104,24 @@ void loop() {
         // client mode can fail; so reconnect as appropriate
 
         if (AppConn.wifiStatus() == WL_CONNECTED) {
-            // We are connected
-            // loop here for §
+            // We are connected to WiFi
+
+            if(!AppConn.isNTPSyncDone()) {
+                AppConn.configNTP();
+                Serial.print("Time: ");
+                AppConn.printLocalTime(true);
+            }
+
+            // loop here to process events
             unsigned long pingwifi = millis();
             while (millis() - pingwifi < WIFI_WATCHDOG ) {
                 AppConn.handleOTA();
                 handleSerial();
             #ifdef ENABLE_MAIL_FEATURE
+                        // mail image if configured, ready for  
+                if(AppMailSender.isPendingSnap() && AppCam.getLastErr() == 0 && AppConn.isNTPSyncDone()) {
+                    AppMailSender.mailImage();
+                }
                 AppMailSender.process();
             #endif
             }
@@ -174,8 +172,15 @@ void handleSerial() {
             String rsp = Serial.readStringUntil('\n');
             rsp.trim();
             if(rsp == "M") {
-                AppConn.updateTimeStr();
-                AppMailSender.mailImage(AppConn.getLocalTimeStr());
+                if(!AppCam.getLastErr() && 
+                    AppConn.wifiStatus() == WL_CONNECTED && 
+                   !AppConn.isAccessPoint() && 
+                    AppConn.isNTPSyncDone()) {
+                    AppMailSender.mailImage();
+                }
+                else {
+                    ESP_LOGE(TAG, "Camera is in error state, reboot required!");
+                }
             }
             else {
                 snprintf(AppHttpd.getSerialBuffer(), SERIAL_BUFFER_SIZE, rsp.c_str());

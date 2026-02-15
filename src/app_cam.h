@@ -96,7 +96,9 @@ class CLAppCam : public CLAppComponent {
         void setFlashLamp(int newVal) {_flashLamp = newVal;};
 
         void setLamp(int newVal = DEFAULT_FLASH);
-        int getLamp() {return _lampVal;};    
+        int getLamp() {return _lampVal;};   
+        
+        long getImagesServed() {return _imagesServed;};
     
     protected:
         int IRAM_ATTR snapToBuffer();
@@ -140,6 +142,7 @@ class CLAppCam : public CLAppComponent {
         // camera sensor
         sensor_t * sensor;
 
+        long _imagesServed;
 
 };
 

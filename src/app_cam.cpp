@@ -149,6 +149,8 @@ int CLAppCam::loadPrefs() {
     { 
         ESP_LOGW(tag,"No PWM configured for flash lamp"); 
     }  
+
+    _imagesServed = 0;
   
     // close the file
     return ret;
@@ -217,6 +219,8 @@ int CLAppCam::snapStillImage(ProcessFrameCallback sendCallback) {
 #endif
 
     if(_autoLamp) setLamp(0);
+
+    _imagesServed++;
 
     return OK;
 }

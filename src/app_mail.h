@@ -14,6 +14,7 @@
 #include <ReadyMail.h>
 
 #include <cstring>
+#include <esp_timer.h>
 
 #include <esp_log.h>
 
@@ -37,16 +38,13 @@ const char MAIL_HTML_MESSAGE[] PROGMEM = "html_message";
 const char MAIL_SNAPONSTART[] PROGMEM = "snaponstart";
 const char MAIL_SLEEPONCOMPLETE[] PROGMEM = "sleeponcomplete";
 const char MAIL_PERIOD[] PROGMEM = "period"; 
-const char MAIL_SHIFT[] PROGMEM = "shift";
-const char MAIL_SHIFT_UNIT[] PROGMEM = "shift_unit";
 const char MAIL_NUM_PERIODS[] PROGMEM = "num_periods";
 const char MAIL_START_AT[] PROGMEM = "start";
 const char MAIL_FINISH_AT[] PROGMEM = "finish";
 
 const char MAIL_IMG_FILENAME[] PROGMEM = "photo.jpg";
 
-
-enum SnapToMailPeriod : uint16_t {
+enum TimePeriod : uint8_t {
     NONE=0,
     MINUTE=1,
     HOUR=2,
@@ -54,7 +52,7 @@ enum SnapToMailPeriod : uint16_t {
     WEEK=4
 };
 
-const uint32_t sleep_periods[] = {0, 60, 3600, 86400, 604800};
+const uint32_t time_periods[] = {0, 60, 3600, 86400, 604800};
 
 class CLAppMailSender : public CLAppComponent {
     public:
@@ -69,22 +67,26 @@ class CLAppMailSender : public CLAppComponent {
         int loadPrefs();
         int savePrefs();
     
-        int mailImage(const String& localtime = "");
+        int mailImage();
         int storeBufImg(uint8_t* buffer, size_t size);
 
         void resetBuffer() {
             img_buffer.reset();
             img_in_buffer = false;
+            buffer_sent = false;
         }
 
-        void hybernate() {
-            esp_sleep_enable_timer_wakeup(uS_TO_S_FACTOR * getSleepPeriod());
-            esp_deep_sleep_start();
-        }
+        void scheduleNext();
 
         bool isSnapOnStart() { return snaponstart; };
+        bool isPendingSnap() {return pendingsnap;};
         bool isSleepOnComplete() { return sleeponcomplete;};
-        uint32_t getSleepPeriod() {return sleep_periods[period] * num_periods;};
+
+        void setPendingSnap() {pendingsnap = configured;};
+
+        // returns number of seconds till schedule event. 0 means period is NONE or 
+        // finish time is in past.
+        uint32_t getSecondsTillFire();
 
     protected:
         void sendMail();
@@ -100,17 +102,24 @@ class CLAppMailSender : public CLAppComponent {
         String message;
         String html_message;
         bool snaponstart;
+        bool pendingsnap;
         bool sleeponcomplete;
-        SnapToMailPeriod period;
-        uint16_t shift;
-        SnapToMailPeriod shift_unit;
+        TimePeriod period;
         uint16_t num_periods;
+
+        // start date/time of the periodic snapshots (UTC)
         time_t start_at;
+
+        // stop date/time of the periodic snapshots (UTC)
         time_t finish_at;
 
-        String _localtime;
+        time_t snaptime;
+
+        esp_timer_handle_t online_timer;
 
         unsigned long ms;
+
+        bool buffer_sent;
 
         WiFiClientSecure* ssl_client;
         SMTPClient* smtp_client;

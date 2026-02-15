@@ -11,10 +11,8 @@
     "snaponstart": false,  
     "sleeponcomplete": false,
     "period": 0,
-    "shift": 0,
-    "shift_unit": 0,
     "num_periods": 0,
-    "start": 0,
-    "finish": 0,
+    "start": "",
+    "finish": "",
     "configured": false
 }

@@ -145,6 +145,8 @@ class CLAppConn : public CLAppComponent {
         char * getUpTimeStr() {return upTimeString;};
         void updateTimeStr();
 
+        bool isNTPSyncDone() {return ntp_in_sync;};
+
         void printLocalTime(bool extraData=false);
 
         char * getUser() {return user;};
@@ -209,6 +211,8 @@ class CLAppConn : public CLAppComponent {
         char ntpServer[20] = "";
         long  gmtOffset_sec;
         int  daylightOffset_sec;
+
+        bool ntp_in_sync = false;
 
         char localTimeString[50];
         char upTimeString[50];

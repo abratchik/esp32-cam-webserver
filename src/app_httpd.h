@@ -83,9 +83,6 @@ class CLAppHttpd : public CLAppComponent {
 
         int8_t getStreamCount() {return _streamCount;};
         long getStreamsServed() {return _streamsServed;};
-        unsigned long getImagesServed() {return _imagesServed;};
-
-        void incImagesServed(){_imagesServed++;};
 
         // start stream
         StreamResponseEnum startStream(uint32_t id, CaptureModeEnum stream_mode);
@@ -139,7 +136,6 @@ class CLAppHttpd : public CLAppComponent {
         int8_t _streamCount=0;
 
         long _streamsServed=0;
-        long _imagesServed=0;
 
         // maximum number of parallel video streams supported. This number can range from 1 to MAX_VIDEO_STREAMS
         int _max_streams=2;

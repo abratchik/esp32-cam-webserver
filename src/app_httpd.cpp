@@ -234,8 +234,6 @@ StreamResponseEnum CLAppHttpd::startStream(uint32_t id, CaptureModeEnum streammo
             if (AppCam.snapStillImage(bcastBufImgCallback) != OK) {
                 return STREAM_IMAGE_CAPTURE_FAILED;
             }
-        
-            _imagesServed++;
             
         }
         else {
@@ -556,7 +554,7 @@ void CLAppHttpd::dumpSystemStatusToJson(char * buf, size_t size) {
     
     jstr[FPSTR(HTTPD_ACTIVE_STREAMS)] = AppHttpd.getStreamCount();
     jstr[FPSTR(HTTPD_STREAMS_SERVED)] = AppHttpd.getStreamsServed();
-    jstr[FPSTR(HTTPD_IMAGES_SERVED)] = AppHttpd.getImagesServed();
+    jstr[FPSTR(HTTPD_IMAGES_SERVED)] = AppCam.getImagesServed();
 
     jstr[FPSTR(CONN_OTA_ENABLED)] = AppConn.isOTAEnabled();
 

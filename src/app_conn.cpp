@@ -432,6 +432,7 @@ void CLAppConn::configMDNS() {
 
 void CLAppConn::configNTP() {
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    ntp_in_sync = true;
 }
 
 void CLAppConn::printLocalTime(bool extraData) {
