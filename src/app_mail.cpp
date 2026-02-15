@@ -204,6 +204,8 @@ void addBlobAttachment(SMTPMessage &msg, const uint8_t *blob, size_t size, const
 
 void CLAppMailSender::sendMail() {
 
+    if(buffer_sent) return;
+
     ESP_LOGI(tag, "Sending image to %s", to_email.c_str());
 
     SMTPMessage &msg = smtp_client->getMessage();
@@ -225,11 +227,10 @@ void CLAppMailSender::sendMail() {
     }
     msg.timestamp = time(nullptr);
 
-    if(!buffer_sent) {
-        addBlobAttachment(msg, img_buffer->data(), img_buffer->size());
-        smtp_client->send(msg, NOTIFY, NO_WAIT);
-        buffer_sent = true;
-    }
+    addBlobAttachment(msg, img_buffer->data(), img_buffer->size());
+    smtp_client->send(msg, NOTIFY, NO_WAIT);
+    buffer_sent = true;
+
 
 }
 
@@ -265,7 +266,7 @@ void CLAppMailSender::process() {
         smtp_client->authenticate(username, password, readymail_auth_password, NO_WAIT);
     }
 
-    if (!buffer_sent && (millis() - ms > 20 * 1000 || ms == 0) && smtp_client->isAuthenticated() ) {
+    if ( (millis() - ms > 20 * 1000 || ms == 0) && smtp_client->isAuthenticated() ) {
         ms = millis();
         sendMail();
     }

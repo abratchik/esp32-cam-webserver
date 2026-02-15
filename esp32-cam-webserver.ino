@@ -40,6 +40,7 @@ void setup() {
 
     // Start the filesystem before we initialise the camera
     filesystemStart();
+
     delay(200); // a short delay to let spi bus settle after init
 
     // Start (init) the camera 
@@ -49,7 +50,7 @@ void setup() {
         ESP_LOGE(TAG,"A full (hard, power off/on) reboot will probably be needed to recover from this.");
         ESP_LOGE(TAG,"Meanwhile; this unit will reboot in 1 minute since these errors sometime clear automatically");
         resetI2CBus();
-        scheduleReboot(60);
+        scheduleReboot(20);
     }
     else
         ESP_LOGI(TAG,"Camera init succeeded");
