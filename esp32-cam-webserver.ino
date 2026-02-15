@@ -172,6 +172,7 @@ void handleSerial() {
             String rsp = Serial.readStringUntil('\n');
             rsp.trim();
             if(rsp == "M") {
+             #ifdef ENABLE_MAIL_FEATURE
                 if(!AppCam.getLastErr() && 
                     AppConn.wifiStatus() == WL_CONNECTED && 
                    !AppConn.isAccessPoint() && 
@@ -181,6 +182,9 @@ void handleSerial() {
                 else {
                     ESP_LOGE(TAG, "Camera is in error state, reboot required!");
                 }
+            #else
+                ESP_LOGW(TAG, "Mail component is not enabled.");
+            #endif
             }
             else {
                 snprintf(AppHttpd.getSerialBuffer(), SERIAL_BUFFER_SIZE, rsp.c_str());

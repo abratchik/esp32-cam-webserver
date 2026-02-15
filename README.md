@@ -277,6 +277,29 @@ The parameter `mapping` allows to configure folders with static content for the 
 The parameter `pwm` allows to configure PWM out, which can be used in various applications (for example,
 to control PTZ camera servo motors)
 
+#### Mail Sender configuration
+```json
+{
+    "username": "someone@somewhere.com",
+    "password": "some_password",
+    "smtp_server": "smtp.somewhere.com",
+    "smtp_port": 465,
+    "from_email": "From <from@somewhere.com>",
+    "to_email": "To <to@somewhere.com>",
+    "subject": "ESP32-CAM Alert",
+    "message": "Snapshot taken at %TIME%",
+    "html_message": "<h1>ESP32-CAM Alert</h1><p>Snapshot taken at %TIME%</p><img src=\"cid:photo.jpg\" />",
+    "snaponstart": false,  
+    "sleeponcomplete": false,
+    "period": 0,
+    "num_periods": 0,
+    "start": "2026-02-01 15:00:00",
+    "finish": "",
+    "configured": false
+}
+```
+This feature allows to take still images on schedule and mail them to a specified e-mail address. 
+
 ### Programming
 
 In order to build and upload the ESP32-CAM WebServer to your board it is best to use [VS Code](https://code.visualstudio.com/) with [PlatformIO](https://platformio.org/) plugin. Just clone the source to your local drive, open the folder in VSC and Platformio will do all the magic for you.
