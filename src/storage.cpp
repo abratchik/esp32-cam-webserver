@@ -37,15 +37,15 @@ void CLStorage::listDir(const char * dirname, uint8_t levels){
 
 
 bool CLStorage::init() {
-#ifdef USE_LittleFS
-  return fsStorage->begin(FORMAT_LITTLEFS_IF_FAILED);
-#else
-#if defined(CAMERA_MODEL_LILYGO_T_SIMCAM)
+#ifdef ARDUINO_LITTLEFS
+  return fsStorage->begin(FORMAT_LITTLEFS_IF_FAILED, "/root");
+#elif ARDUINO_SPIFFS
+  return fsStorage->begin();
+#elif defined(CAMERA_MODEL_LILYGO_T_SIMCAM)
   SPI.begin(SD_SCLK_PIN, SD_MISO_PIN, SD_MOSI_PIN, SD_CS_PIN);
   if(!fsStorage->begin(SD_CS_PIN, SPI)) return false;
 #else
   if(!fsStorage->begin("/root", true, false, SDMMC_FREQ_DEFAULT)) return false;
-#endif
 
   uint8_t cardType = fsStorage->cardType();
 
@@ -89,12 +89,12 @@ int CLStorage::readFileToString(char *path, String *s)
 	return OK;
 }
 
-uint16_t CLStorage::getSize() {
-  return (uint16_t) ((double) fsStorage->totalBytes() / pow(1024, STORAGE_UNITS));
+unsigned int CLStorage::getSize() {
+  return (unsigned int) ((double) fsStorage->totalBytes() / pow(1024, STORAGE_UNITS));
 }
 
-int CLStorage::getUsed() {
-  return (int) ((double) fsStorage->usedBytes() / pow(1024, STORAGE_UNITS));
+unsigned int  CLStorage::getUsed() {
+  return (unsigned int) ((double) fsStorage->usedBytes() / pow(1024, STORAGE_UNITS));
 }
 
 int CLStorage::capacityUnits() {

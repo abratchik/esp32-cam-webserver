@@ -78,6 +78,11 @@ class CLAppMailSender : public CLAppComponent {
 
         void scheduleNext();
 
+        const char* getSMTPServer() {return smtp_server.c_str();};
+        uint16_t getSMTPPort() {return smtp_port;};
+        const char* getToEmail() {return to_email.c_str();};
+        const char* getFromEmail() {return from_email.c_str();};
+
         bool isSnapOnStart() { return snaponstart; };
         bool isPendingSnap() {return pendingsnap;};
         bool isSleepOnComplete() { return sleeponcomplete;};

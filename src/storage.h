@@ -12,9 +12,12 @@
 #define STORAGE_UNITS_BT 0
 #define STORAGE_UNITS_MB 2
 
-#ifdef USE_LittleFS
-#include <LITTLEFS.h>
+#ifdef ARDUINO_LITTLEFS
+#include <LittleFS.h>
 #define FORMAT_LITTLEFS_IF_FAILED true
+#define STORAGE_UNITS STORAGE_UNITS_BT
+#elif ARDUINO_SPIFFS
+#include <SPIFFS.h>
 #define STORAGE_UNITS STORAGE_UNITS_BT
 #elif defined(CAMERA_MODEL_LILYGO_T_SIMCAM)
 #include "camera_pins.h"
@@ -51,16 +54,18 @@ class CLStorage {
         /// @param levels 
         void listDir(const char * dirname, uint8_t levels);
 
-        uint16_t getSize();
-        int getUsed();
+        unsigned int getSize();
+        unsigned int getUsed();
         int capacityUnits();
 
         File open(const String &path, const char *mode = "r", const bool create = false) {return fsStorage->open(path, mode, create);};
         bool exists(const String &path) {return fsStorage->exists(path);};
         bool remove(const String &path) {return fsStorage->remove(path);};
 
-#ifdef USE_LittleFS
-        fs::LITTLEFSFS & getFS() {return *fsStorage;};
+#ifdef ARDUINO_LITTLEFS
+        fs::LittleFSFS & getFS() {return *fsStorage;};
+#elif ARDUINO_SPIFFS
+        fs::SPIFFSFS & getFS() {return *fsStorage;};
 #elif defined(CAMERA_MODEL_LILYGO_T_SIMCAM)
         fs::SDFS & getFS() {return *fsStorage;};
 #else
@@ -68,8 +73,10 @@ class CLStorage {
 #endif        
 
     private:
-#ifdef USE_LittleFS
-        fs::LITTLEFSFS * const fsStorage = &LITTLEFS;
+#ifdef ARDUINO_LITTLEFS
+        fs::LittleFSFS * const fsStorage = &LittleFS;
+#elif ARDUINO_SPIFFS
+        fs::SPIFFSFS * const fsStorage = &SPIFFS;
 #elif defined(CAMERA_MODEL_LILYGO_T_SIMCAM)
         fs::SDFS * const fsStorage = &SD;
 #else

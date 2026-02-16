@@ -116,21 +116,23 @@ After that, insert the card in the slot of your ESP32CAM board and restart it. T
 
 Please ensure the size of the card does not exceed 4GB, which is a maximum supported capacity for ESP32-CAM board. Higher capacity SD card may not work.
 
-#### Using built-in storage formatted as Little FS 
-This option is still experimental and recommended for advanced users only. First, you will need to 
-prepare your board and the dev environment for LittleFS. You can read about it [here:](https://github.com/lorol/LITTLEFS).
+#### Using built-in storage 
 
-Next, you will need to prepare the sketch for work with LittleFS. For that, you will need to uncomment the 
-following line in the `src/app_config.h`:
+In order to use the internal ESP32 flash the file system needs to be defined in the **platformio.ini**:
 
 ```
-// #define USE_LittleFS
+[env:esp32cam]
+...
+board_build.filesystem = spiffs
+build_flags = 
+  ...
+  -DARDUINO_SPIFFS
+  ...
 ```
 
-Re-build the sketch and upload it to the ESP32CAM board. Also upload the data folder using the 
-**ESP32 Sketch Data Upload** tool, which is invoked from the `Tools` menu of Arduino IDE.
+Re-build the sketch and the filesystem image and upload it to the ESP32CAM board.
 
-Provided that everything goes well, you should be able to boot your ESP32 CAM Web Server from LittleFS.
+Provided that everything goes well, you should be able to boot your ESP32 CAM Web Server from the built-in storage system.
 
 ### Initial configuration
 

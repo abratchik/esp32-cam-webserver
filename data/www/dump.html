@@ -126,6 +126,13 @@
                 bodyHtml += 'Filesystem: ' + data.storage_size + data.storage_units +  
                             ', used: ' + data.storage_used + data.storage_units + '<br>';
 
+                if(data.smtp_server != "") {
+                    bodyHtml += '<h2>Mail</h2>';
+                    bodyHtml += 'SMTP Server: ' + data.smtp_server + ', port ' + data.smtp_port + '<br>';
+                    bodyHtml += 'Sender: ' + data.from + '<br>';
+                    bodyHtml += 'Recipient: ' + data.to + '<br>';
+                }
+
                 if(data.serial_buf != "") {
                     bodyHtml += '<h2>Serial</h2>';
                     bodyHtml += data.serial_buf;

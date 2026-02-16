@@ -5,10 +5,9 @@
 #define CAM_NAME "ESP32 CAM Web Server"
 
 /* Base application version */
-#define BASE_VERSION "5.0"
+#define BASE_VERSION "6.0"
 
 #include <esp_log.h>
-
 
 /* Extended WiFi Settings */
 
@@ -24,17 +23,14 @@
  *
  */
 
-// Uncomment to disable the notification LED on the module
-// #define LED_DISABLE
+/*
+* Filesystem choice
+* These settings allow to choose between the different file systems. If neither of these is 
+* defined then the filesystem will default to SD flash card.
+*/ 
 
-// Uncomment this line to use LittleFS instead of SD. 
-// NOTE!
-// LittleFS is still experimental, not recommended. The 'official' library installed from the Library Manager 
-// seems to be broken, but fixed in this PR: https://github.com/lorol/LITTLEFS/pull/56 
-// To install it, please navigate to you /libraries sub-folder of your sketch location and then execute 
-// git clone https://github.com/Michael2MacDonald/LITTLEFS.
-
-// #define USE_LittleFS
+// #define ARDUINO_SPIFFS
+// #define ARDUINO_LITTLEFS /* currently not supported for ESP32-DEV and Platformio */ 
 
 /*
  * Camera Hardware Selection
@@ -56,13 +52,18 @@
 // #define CAMERA_MODEL_LILYGO_T_SIMCAM
 
 /*
- * Optional Features
+ * Mail image feature
  *
- * Uncomment the lines below to enable the corresponding features.
- * These are all optional, but may require additional configuration (e.g. mail server details for the mail feature)
+ * Uncomment the lines below to enabe snap & mail functionality
+ * This feature requires additional configuration.
  */
 
-// #define ENABLE_MAIL_FEATURE  
+// #define ENABLE_MAIL_FEATURE 
+
+
+/*
+* Commands to an external device over UART
+*/
 // #define ENABLE_SERIAL_COMMANDS
 
 

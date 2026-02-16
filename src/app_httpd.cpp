@@ -436,11 +436,15 @@ void CLAppHttpd::setFrameRate(int tps) {
 void onInfo(AsyncWebServerRequest *request) {
     AsyncResponseStream *response = request->beginResponseStream("application/json");
 
-    char buf[CAM_DUMP_BUFFER_SIZE];
+    JsonDocument jdoc;
+    JsonObject jstr = jdoc.to<JsonObject>();
 
-    AppHttpd.dumpCameraStatusToJson(buf, sizeof(buf), false);
+    AppHttpd.dumpCameraStatusToJson(jstr, false);
 
-    response->print(buf);
+    String output;
+    serializeJson(jstr, output);
+
+    response->print(output);
     request->send(response); 
 }
 
@@ -448,21 +452,29 @@ void onStatus(AsyncWebServerRequest *request) {
     AsyncResponseStream *response = request->beginResponseStream("application/json");
     // Do not get attempt to get sensor when in error; causes a panic..
 
-    char buf[CAM_DUMP_BUFFER_SIZE];
+    JsonDocument jdoc;
+    JsonObject jstr = jdoc.to<JsonObject>();
 
-    AppHttpd.dumpCameraStatusToJson(buf, sizeof(buf));
+    AppHttpd.dumpCameraStatusToJson(jstr);
+    
+    String output;
+    serializeJson(jstr, output);
 
-    response->print(buf);
+    response->print(output);
     request->send(response);
 }
 
 void onSystemStatus(AsyncWebServerRequest *request) {
     AsyncResponseStream *response = request->beginResponseStream("application/json");
 
-    char buf[1280];
-    AppHttpd.dumpSystemStatusToJson(buf, sizeof(buf));
-    
-    response->print(buf);
+    JsonDocument jdoc;
+    JsonObject jstr = jdoc.to<JsonObject>();
+
+    AppHttpd.dumpSystemStatusToJson(jstr);
+
+    String output;
+    serializeJson(jstr, output);
+    response->print(output);
 
 #if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
     Serial.println();
@@ -473,10 +485,7 @@ void onSystemStatus(AsyncWebServerRequest *request) {
     request->send(response);
 }
 
-void CLAppHttpd::dumpCameraStatusToJson(char * buf, size_t size, bool full_status) {
-
-    JsonDocument jdoc;
-    JsonObject jstr = jdoc.to<JsonObject>();
+void CLAppHttpd::dumpCameraStatusToJson(JsonObject jstr, bool full_status) {
 
     jstr[FPSTR(CAM_PNAME)] = getName();
     // jstr["stream_url"] = AppConn.getStreamUrl();
@@ -493,13 +502,9 @@ void CLAppHttpd::dumpCameraStatusToJson(char * buf, size_t size, bool full_statu
         jstr[FPSTR(APP_CODE_VERSION_PARAM)] = getVersion();
     }
 
-    serializeJson(jdoc, buf, size);
 }
 
-void CLAppHttpd::dumpSystemStatusToJson(char * buf, size_t size) {
-
-    JsonDocument jdoc;
-    JsonObject jstr = jdoc.to<JsonObject>();
+void CLAppHttpd::dumpSystemStatusToJson(JsonObject jstr) {
 
     jstr[FPSTR(CAM_PNAME)] = getName();
     jstr[FPSTR(APP_CODE_VERSION_PARAM)] = getVersion();
@@ -580,7 +585,12 @@ void CLAppHttpd::dumpSystemStatusToJson(char * buf, size_t size) {
 
     jstr[FPSTR(HTTPD_SERIAL_BUF)] = getSerialBuffer();
 
-    serializeJson(jdoc, buf, size);
+#ifdef ENABLE_MAIL_FEATURE
+    jstr[FPSTR(MAIL_SMTP_SERVER)] = AppMailSender.getSMTPServer();
+    jstr[FPSTR(MAIL_SMTP_PORT)] = AppMailSender.getSMTPPort();
+    jstr[FPSTR(MAIL_FROM)] = AppMailSender.getFromEmail();
+    jstr[FPSTR(MAIL_TO)] = AppMailSender.getToEmail();
+#endif
 
 }
 

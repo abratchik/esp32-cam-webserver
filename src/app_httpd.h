@@ -14,6 +14,10 @@
 #include "app_cam.h"
 #include "app_pwm.h"
 
+#ifdef ENABLE_MAIL_FEATURE
+#include "app_mail.h"      // Mail client
+#endif
+
 #include <esp_log.h>
 
 #define MAX_URI_MAPPINGS                32
@@ -106,8 +110,8 @@ class CLAppHttpd : public CLAppComponent {
 
         char * getSerialBuffer() {return serialBuffer;};
 
-        void dumpSystemStatusToJson(char * buf, size_t size);
-        void dumpCameraStatusToJson(char * buf, size_t size, bool full = true);
+        void dumpSystemStatusToJson(JsonObject jstr);
+        void dumpCameraStatusToJson(JsonObject jstr, bool full = true);
 
         uint8_t getTemp() {return temperatureRead();};
         
