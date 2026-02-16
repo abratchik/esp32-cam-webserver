@@ -19,7 +19,7 @@ webcam use.
 * Supporting basic authentication
 * Porting the web server to [ESP Async Web Server](https://github.com/abratchik/ESPAsyncWebServer). 
 * Storing web pages as separate HTML/CSS/JS files on the storage (can be either a micro SD flash memory card
-or the built-in flash formatted as LittleFS).  This greatly simplifies development of the interface. Basically, one can swap the face of this project just by replacing files on storage file system.
+or the built-in flash filesystem).  This greatly simplifies development of the interface. Basically, one can swap the face of this project just by replacing files on storage file system.
 * Introducing a standard way of attaching and controlling PWM output on the board for different scenarios involving servos and motors 
 * Making unattended snapshot and sending it to a specified e-mail address
 * Compact size of the sketch and low memory utilization
@@ -103,7 +103,7 @@ selecting `esp32-cam-webserver.ino`. Compile it and upload to your board.
 
 ### Preparing the Web Server storage.
 You will need to copy the content of the **data** folder from this repository to the storage, which 
-can be either a micro SD flash memory card or the built-in flash memory with Little FS file system.
+can be either a micro SD flash memory card or the built-in flash memory file system.
 
 **IMPORTANT!** Without the storage and content of the data folder on it, the sketch will not start. 
 
