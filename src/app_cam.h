@@ -1,8 +1,6 @@
 #ifndef app_cam_h
 #define app_cam_h
 
-#define CAM_DUMP_BUFFER_SIZE   1024
-
 #define DEFAULT_FLASH                   0xFF
 
 #include <esp_camera.h>

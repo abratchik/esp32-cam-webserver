@@ -91,7 +91,7 @@ int CLAppCam::loadPrefs() {
     // process local settings    
     frameRate = doc[FPSTR(CAM_FRAME_RATE)];
     xclk = doc[FPSTR(CAM_XCLK)];
-    myRotation = doc["rotate"];
+    myRotation = doc[FPSTR(CAM_ROTATE)];
 
     // get sensor reference
     sensor_t * s = esp_camera_sensor_get();
@@ -243,7 +243,7 @@ void CLAppCam::setLamp(int newVal) {
 
 void CLAppCam::dumpStatusToJson(JsonObject jstr, bool full_status) {
  
-    jstr["rotate"] = myRotation;
+    jstr[FPSTR(CAM_ROTATE)] = myRotation;
     
     if(getLastErr()) return;
 
