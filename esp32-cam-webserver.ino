@@ -11,7 +11,8 @@
 #endif
 
 #include <esp_log.h>
-
+#include <esp_timer.h>
+#include <Preferences.h>
 
 
 /* 
@@ -21,39 +22,135 @@
 
 const char* TAG = "ino";
 
+Preferences preferences;
+uint8_t boot_error = BootError::NO_ERROR;
+uint8_t reboot_attempts = 0;
+
+unsigned long connect_ms = 0;
+unsigned long connect_timeout = 0;
+
+void loadNVS(){
+    preferences.begin(SYSTEM_PREF_NS, true);
+    boot_error = preferences.getUChar(SYSTEM_BOOT_ERROR, 0);
+    reboot_attempts = preferences.getUChar(SYSTEM_REBOOT_ATTEMPTS, 0);
+    preferences.end();
+}
+
+void saveNVS() {
+    preferences.begin(SYSTEM_PREF_NS, false);
+    preferences.putUChar(SYSTEM_BOOT_ERROR, boot_error);
+    preferences.putUChar(SYSTEM_REBOOT_ATTEMPTS, reboot_attempts);
+    preferences.end();
+}
+
+void recordError(uint8_t error) {
+    if(boot_error != error || error == 0)
+        reboot_attempts == 0;
+    else
+        reboot_attempts++;
+    boot_error = error;
+    flashLED(LED_ON_mS, LED_OFF_mS, error);
+    saveNVS();
+}
+
+void onNetworkFailure() {
+    ESP_LOGE(TAG,"Failed to initiate WiFi.");
+    recordError(NETWORK_FAILURE);
+    if(reboot_attempts < 3) {
+        ESP_LOGI(TAG, "Snooze and retry in 1 hour, attempt %d", reboot_attempts);
+        hibernate(TIME_PERIODS[HOUR]);
+    }
+    else {
+        ESP_LOGI(TAG, "Hibernate as no WiFi connection");
+        hibernate();
+    }
+}
+
+/// @brief tries to initialize the filesystem. Makes 30 attempts, 1 second 
+/// @return true if success or false otherwise
+bool filesystemStart(){
+
+  ESP_LOGI(TAG, "Starting filesystem");
+  uint8_t attempts = 30; 
+  while ( !Storage.init()) {
+    // if we sit in this loop something is wrong;
+    ESP_LOGE(TAG, "Filesystem mount failed");
+    flashLED(LED_ON_mS, LED_OFF_mS, FILESYSTEM_FAILURE);
+    delay(1000);
+    attempts--;
+    if(attempts == 0) return false;
+    ESP_LOGI(TAG,"Retrying...");
+  }
+#if (CONFIG_LOG_DEFAULT_LEVEL >= CORE_DEBUG_LEVEL )
+  Storage.listDir("/", 0);
+#endif
+  return true;
+}
+
+/// @brief tries to initialize the wifi. Makes 20 attempts to init, 5 seconds interval.
+/// @return true if success or false otherwise
+bool networkStart() {
+    uint8_t attempts = 2;
+    while (AppConn.wifiStatus() != WL_CONNECTED)  {
+        if(AppConn.start() == WL_CONNECTED) {
+            break;
+        }
+        AppConn.stop();
+        attempts--;
+        ESP_LOGI(TAG, "%d attempts to connect remaining", attempts);
+        if(!attempts) return false;
+    }
+    connect_ms = millis();
+    connect_timeout = AppConn.getAPTimeout() * 1000UL;
+    notifyConnect();
+    return true;
+}
+
 void setup() {
     Serial.begin(115200);
     Serial.setDebugOutput(true);
 
-    // Warn if no PSRAM is detected (typically user error with board selection in the IDE)
-    if(!psramFound()){
-        ESP_LOGE(TAG, "Fatal Error; Halting");
-        while (true) {
-            ESP_LOGE(TAG, "No PSRAM found; camera cannot be initialised: Please check the board config for your module.");
-            delay(5000);
-        }
-    }
-
     #if defined(LED_PIN)  // If we have a notification LED, set it to output
-        pinMode(LED_PIN, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
     #endif
 
-    // Start the filesystem before we initialise the camera
-    filesystemStart();
+    loadNVS();
+
+    ESP_LOGI(TAG, "Last boot error=%d, attempt=%d", boot_error, reboot_attempts);
+
+    // Warn if no PSRAM is detected (typically user error with board selection in the IDE)
+    if(!psramFound()){
+        ESP_LOGE(TAG, "No PSRAM found, please check the board config. Fatal error, halting ... ");
+        recordError(PSRAM_INIT_FAILURE);
+        hibernate();
+    }
+
+    // Start the filesystem 
+    if(!filesystemStart()) {
+        ESP_LOGE(TAG, "Unable to mount the filesystem. Fatal error, halting ... ");
+        recordError(FILESYSTEM_FAILURE);
+        hibernate();
+    }
 
     delay(200); // a short delay to let spi bus settle after init
 
     // Start (init) the camera 
     if (AppCam.start() != OK) {
         delay(100);  // need a delay here or the next serial o/p gets missed
-        ESP_LOGE(TAG,"CRITICAL FAILURE:%s", AppCam.getErr()); 
-        ESP_LOGE(TAG,"A full (hard, power off/on) reboot will probably be needed to recover from this.");
-        ESP_LOGE(TAG,"Meanwhile; this unit will reboot in 1 minute since these errors sometime clear automatically");
+        ESP_LOGE(TAG,"Critical camera failure: %s", AppCam.getErr()); 
+        recordError(CAMERA_FAILURE);
         resetI2CBus();
-        scheduleReboot(20);
+        if(reboot_attempts < 3) {
+            ESP_LOGI(TAG, "Snooze and retry in 20 seconds, attempt %d", reboot_attempts);
+            hibernate(20);
+        }
+        else {
+            hibernate();
+        }
     }
-    else
+    else {
         ESP_LOGI(TAG,"Camera init succeeded");
+    }
 
     // Now load and apply preferences
     delay(200); // a short delay to let spi bus settle after camera init
@@ -64,15 +161,8 @@ void setup() {
     */
 
     // Start Wifi and loop until we are connected or have started an AccessPoint
-    while (AppConn.wifiStatus() != WL_CONNECTED)  {
-        if(AppConn.start() != WL_CONNECTED) {
-            ESP_LOGW(TAG,"Failed to initiate WiFi, retrying in 5 sec ... ");
-            delay(5000);
-        }
-        else {
-            // Flash the LED to show we are connected
-            notifyConnect();
-        }
+    if(!networkStart()) {
+        onNetworkFailure();
     }
 
     #ifdef ENABLE_MAIL_FEATURE
@@ -83,17 +173,13 @@ void setup() {
     // Start the web server
     AppHttpd.start();
 
+    recordError(NO_ERROR);
+
 }
 
 void loop() {
-    /*
-     *  Just loop forever, reconnecting Wifi As necesscary in client mode
-     * The stream and URI handler processes initiated by the startCameraServer() call at the
-     * end of setup() will handle the camera and UI processing from now on.
-    */
+    
     if (AppConn.isAccessPoint()) {
-        // Accespoint is permanently up, so just loop, servicing the captive portal as needed
-        // Rather than loop forever, follow the watchdog, in case we later add auto re-scan.
         unsigned long pingwifi = millis();
         while (millis() - pingwifi < WIFI_WATCHDOG ) {
             AppConn.handleOTA();
@@ -101,6 +187,10 @@ void loop() {
             AppConn.handleDNSRequest();
         }
         AppHttpd.cleanupWsClients();
+        // check AP timeout in case if not configured as AP (network fallback)
+        if(!AppConn.isLoadAsAp() && connect_timeout && (millis() - connect_ms > connect_timeout) ) {
+            onNetworkFailure();
+        }
     } else {
         // client mode can fail; so reconnect as appropriate
 
@@ -114,14 +204,18 @@ void loop() {
             }
 
             // loop here to process events
-            unsigned long pingwifi = millis();
-            while (millis() - pingwifi < WIFI_WATCHDOG ) {
+            connect_ms = millis();
+            while (millis() - connect_ms < WIFI_WATCHDOG ) {
                 AppConn.handleOTA();
                 handleSerial();
             #ifdef ENABLE_MAIL_FEATURE
-                        // mail image if configured, ready for  
+                // snap image if camera is ready and mail it if configured  
                 if(AppMailSender.isPendingSnap() && AppCam.getLastErr() == 0 && AppConn.isNTPSyncDone()) {
-                    AppMailSender.mailImage();
+                    if(AppMailSender.mailImage() != OK) {
+                        // if mailImage fails it means something wrong with the camera, need reboot
+                        recordError(CAMERA_FAILURE);
+                        scheduleReboot(3);
+                    }
                 }
                 AppMailSender.process();
             #endif
@@ -144,25 +238,6 @@ void loop() {
     }
 }
 
-
-/// @brief tries to initialize the filesystem until success, otherwise loops indefinitely
-void filesystemStart(){
-
-  ESP_LOGI(TAG, "Starting filesystem");
-  while ( !Storage.init() ) {
-    // if we sit in this loop something is wrong;
-    ESP_LOGE(TAG, "Filesystem mount failed");
-    for (int i=0; i<10; i++) {
-      flashLED(100); // Show filesystem failure
-      delay(100);
-    }
-    delay(1000);
-    ESP_LOGI(TAG,"Retrying...");
-  }
-  
-  Storage.listDir("/", 0);
-}
-
 // Serial input 
 void handleSerial() {
     if(Serial.available()) {
@@ -178,10 +253,14 @@ void handleSerial() {
                     AppConn.wifiStatus() == WL_CONNECTED && 
                    !AppConn.isAccessPoint() && 
                     AppConn.isNTPSyncDone()) {
-                    AppMailSender.mailImage();
+
+                    if(AppMailSender.mailImage() != OK) {
+                        ESP_LOGE(TAG, "Failure to make a snapshot, check camera");
+                    }
+
                 }
                 else {
-                    ESP_LOGE(TAG, "Camera is in error state, reboot required!");
+                    ESP_LOGE(TAG, "Unable to snap2 & mail, check camera, WiFi or NTP settings");
                 }
             #else
                 ESP_LOGW(TAG, "Mail component is not enabled.");
@@ -195,10 +274,6 @@ void handleSerial() {
 }
 
 void notifyConnect() {
-    for (int i = 0; i < 5; i++) {
-        flashLED(150);
-        delay(50);
-    }
     AppHttpd.serialSendCommand("Connected");
 }
 
@@ -206,25 +281,6 @@ void notifyDisconnect() {
     AppHttpd.serialSendCommand("Disconnected");
 }
 
-// Flash LED if LED pin defined
-void flashLED(int flashtime) {
-#ifdef LED_PIN
-    digitalWrite(LED_PIN, LED_ON);
-    delay(flashtime);
-    digitalWrite(LED_PIN, LED_OFF);
-#endif
-}
 
-void scheduleReboot(int delay) {
-    esp_task_wdt_init(delay,true);
-    esp_task_wdt_add(NULL);
-}
 
-// Reset the I2C bus.. may help when rebooting.
-void resetI2CBus() {
-    periph_module_disable(PERIPH_I2C0_MODULE); // try to shut I2C down properly in case that is the problem
-    periph_module_disable(PERIPH_I2C1_MODULE);
-    periph_module_reset(PERIPH_I2C0_MODULE);
-    periph_module_reset(PERIPH_I2C1_MODULE);
-}
 

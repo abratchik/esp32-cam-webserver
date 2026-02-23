@@ -238,6 +238,7 @@ int CLAppConn::loadPrefs() {
     }
     
     load_as_ap = jctx[FPSTR(CONN_LOAD_AS_AP)] | false;
+    ap_timeout = jctx[FPSTR(CONN_AP_TIMEOUT)] | 0;
     snprintf(apName, sizeof(apName), "%s", jctx[FPSTR(CONN_AP_SSID)] | "ESP32-CAM-AP");
 
     sniprintf(dbuf, sizeof(dbuf), "%s", jctx[FPSTR(CONN_AP_PASS)] | "");
@@ -340,7 +341,8 @@ int CLAppConn::savePrefs() {
     urlEncode(ebuf, otaPassword, sizeof(otaPassword));
     jstr[FPSTR(CONN_OTA_PASSWORD)] = ebuf;
 
-    jstr[FPSTR(CONN_ACCESS_POINT)] = load_as_ap;
+    jstr[FPSTR(CONN_LOAD_AS_AP)] = load_as_ap;
+    jstr[FPSTR(CONN_AP_TIMEOUT)] = ap_timeout;
     jstr[FPSTR(CONN_AP_SSID)] = apName;
     urlEncode(ebuf, apPass, sizeof(apPass));
     jstr[FPSTR(CONN_AP_PASS)] = ebuf;

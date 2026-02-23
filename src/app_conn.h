@@ -9,7 +9,7 @@
 #include <time.h>
 #include <ArduinoJson.h>
 
-#include "parsebytes.h"
+#include "utils.h"
 #include "app_component.h"
 #include "app_cam.h"
 
@@ -38,7 +38,7 @@ const char CONN_USER[] PROGMEM = "user";
 const char CONN_PWD[] PROGMEM = "pwd";
 const char CONN_OTA_ENABLED[] PROGMEM = "ota_enabled";
 const char CONN_OTA_PASSWORD[] PROGMEM = "ota_password";
-const char CONN_ACCESS_POINT[] PROGMEM = "accesspoint";
+const char CONN_AP_TIMEOUT[] PROGMEM = "ap_timeout";
 const char CONN_LOAD_AS_AP[] PROGMEM = "load_as_ap";
 const char CONN_AP_NAME[] PROGMEM = "ap_name";
 const char CONN_AP_SSID[] PROGMEM = "ap_ssid";
@@ -123,8 +123,8 @@ class CLAppConn : public CLAppComponent {
 
         char * getHTTPUrl(){ return httpURL;};
         // char * getStreamUrl(){ return streamURL;};
-        int getPort() {return httpPort;};
-        void setPort(int port) {httpPort = port;};
+        int getHTTPPort() {return httpPort;};
+        void setHTTPPort(int port) {httpPort = port;};
 
         char * getApName() {return apName;};
         void setApName(const char * str) {snprintf(apName, sizeof(apName), str);};
@@ -133,7 +133,10 @@ class CLAppConn : public CLAppComponent {
         bool isAccessPoint() {return accesspoint;};
         void setAccessPoint(bool val) {accesspoint = val;};
         void setLoadAsAP(bool val) {load_as_ap = val;}
-        bool getAPDHCP() {return ap_dhcp;};
+        bool isLoadAsAp() { return load_as_ap; };
+        uint32_t getAPTimeout() { return ap_timeout; };
+        void setAPTimeout(uint32_t timeout ) {ap_timeout = timeout;};
+        bool isAPDHCP() {return ap_dhcp; };
         void setAPDHCP(bool val) {ap_dhcp = val;};
         StaticIP * getAPIP() {return &apIP;};
         int getAPChannel() {return ap_channel;};
@@ -176,6 +179,7 @@ class CLAppConn : public CLAppComponent {
 
         bool accesspoint = false;
         bool load_as_ap = false;
+        uint32_t ap_timeout = 0;
 
         char apName[20];
         char apPass[20];

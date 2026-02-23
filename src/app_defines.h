@@ -28,6 +28,16 @@ const char ESP_PSRAM_FREE_PARAM[] PROGMEM = "psram_free";
 const char ESP_PSRAM_MIN_FREE_PARAM[] PROGMEM = "psram_min_free";
 const char ESP_PSRAM_MAX_BLOC_PARAM[] PROGMEM = "psram_max_bloc";
 
+enum BootError {
+    NO_ERROR = 0,
+    NETWORK_FAILURE = 1,
+    CAMERA_FAILURE = 3,
+    FILESYSTEM_FAILURE = 5,
+    PSRAM_INIT_FAILURE = 10
+};
 
+#define SYSTEM_PREF_NS          "sys"
+#define SYSTEM_BOOT_ERROR       "berr"
+#define SYSTEM_REBOOT_ATTEMPTS  "nrbt"
 
 #endif

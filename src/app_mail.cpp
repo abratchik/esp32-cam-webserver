@@ -14,8 +14,10 @@ void smtpStatusCallback(SMTPStatus status) {
     else {
         ESP_LOGI(AppMailSender.getTag(), "[smtp][%d]%s\n", status.state, status.text.c_str());
         if(status.isComplete) {
+            AppMailSender.disconnect();
             AppMailSender.resetBuffer();
             AppMailSender.scheduleNext();
+            AppMailSender.resetTimeout();
         }
     }
 }
@@ -132,7 +134,8 @@ int IRAM_ATTR storeBufImgCallback(uint8_t* buffer, size_t size) {
 int CLAppMailSender::mailImage() {
     time(&snaptime);
     pendingsnap = false;
-    return AppCam.snapStillImage(storeBufImgCallback);
+    int result = AppCam.snapStillImage(storeBufImgCallback);
+    return result;
 }
 
 uint32_t CLAppMailSender::getSecondsTillFire() {
@@ -147,17 +150,15 @@ uint32_t CLAppMailSender::getSecondsTillFire() {
         return 0;
     }
 
-    return time_periods[period] * num_periods;
+    return TIME_PERIODS[period] * num_periods;
 }
 
 void CLAppMailSender::scheduleNext() {
     uint32_t seconds_till_fire = getSecondsTillFire();
     if(seconds_till_fire) {
         if(sleeponcomplete) {
-            ESP_LOGI(tag, "Going to hybernate for %lu seconds", seconds_till_fire);
-            esp_sleep_enable_timer_wakeup(uS_TO_S_FACTOR * seconds_till_fire);
-            esp_deep_sleep_disable_rom_logging();
-            esp_deep_sleep_start();
+            ESP_LOGI(tag, "Going to hibernate for %lu seconds", seconds_till_fire);
+            hibernate(seconds_till_fire);
         }
         else {
             ESP_LOGI(tag, "Schedule snap & mail image in %lu seconds", seconds_till_fire);
@@ -231,6 +232,8 @@ void CLAppMailSender::sendMail() {
     smtp_client->send(msg, NOTIFY, NO_WAIT);
     buffer_sent = true;
 
+    // store the time we sent the mail
+    ms_on_send = millis();
 
 }
 
@@ -254,11 +257,19 @@ void CLAppMailSender::process() {
 
     smtp_client->loop();
 
+    if(ms_on_send > 0 && millis() - ms_on_send > MAIL_TIMEOUT) {
+        disconnect();
+        resetTimeout();
+        resetBuffer();
+        scheduleNext();
+        return;
+    }
+
     if(smtp_client->isProcessing()) {
         return;
     }
 
-    if(!smtp_client->isConnected()) {
+    if(img_in_buffer && !smtp_client->isConnected()) {
         smtp_client->connect(smtp_server.c_str(), smtp_port, smtpStatusCallback, SSL_MODE, NO_WAIT);
     }
 
@@ -266,10 +277,10 @@ void CLAppMailSender::process() {
         smtp_client->authenticate(username, password, readymail_auth_password, NO_WAIT);
     }
 
-    if ( (millis() - ms > 20 * 1000 || ms == 0) && smtp_client->isAuthenticated() ) {
-        ms = millis();
+    if ( smtp_client->isAuthenticated() ) {
         sendMail();
     }
+
 }
 
 CLAppMailSender AppMailSender;

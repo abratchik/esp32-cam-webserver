@@ -4,11 +4,11 @@
 #include "app_defines.h"
 #include "app_component.h"
 #include "app_cam.h"
+#include "utils.h"
 
 #define ENABLE_SMTP
 #define ENABLE_DEBUG
-
-#define uS_TO_S_FACTOR 1000000ULL /* Conversion factor for micro seconds to seconds */
+#define MAIL_TIMEOUT 30 * 1000
 
 #include <WiFiClientSecure.h>
 #include <ReadyMail.h>
@@ -44,21 +44,11 @@ const char MAIL_FINISH_AT[] PROGMEM = "finish";
 
 const char MAIL_IMG_FILENAME[] PROGMEM = "photo.jpg";
 
-enum TimePeriod : uint8_t {
-    NONE=0,
-    MINUTE=1,
-    HOUR=2,
-    DAY=3,
-    WEEK=4
-};
-
-const uint32_t time_periods[] = {0, 60, 3600, 86400, 604800};
-
 class CLAppMailSender : public CLAppComponent {
     public:
         CLAppMailSender() {
             setTag("mail");
-            ms = 0;
+            ms_on_send = 0;
         };
 
         int start();
@@ -75,6 +65,10 @@ class CLAppMailSender : public CLAppComponent {
             img_in_buffer = false;
             buffer_sent = false;
         }
+
+        void resetTimeout() {ms_on_send = 0;};
+        
+        void disconnect() { smtp_client->stop(); };
 
         void scheduleNext();
 
@@ -122,7 +116,7 @@ class CLAppMailSender : public CLAppComponent {
 
         esp_timer_handle_t online_timer;
 
-        unsigned long ms;
+        unsigned long ms_on_send;
 
         bool buffer_sent;
 

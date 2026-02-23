@@ -87,7 +87,7 @@
                 bodyHtml += 'Local IP: ' + data.ip_address + '<br>';
                 bodyHtml += 'Netmask: ' + data.subnet + '<br>';
                 bodyHtml += 'Gateway: ' + data.gateway + '<br>';
-                bodyHtml += 'Port: ' + data.port + '<br>';
+                bodyHtml += 'Port: ' + data.http_port + '<br>';
                 bodyHtml += 'MAC: ' + data.mac_address + '<br>';
 
                 bodyHtml += '<h2>System</h2>';
@@ -131,6 +131,9 @@
                     bodyHtml += 'SMTP Server: ' + data.smtp_server + ', port ' + data.smtp_port + '<br>';
                     bodyHtml += 'Sender: ' + data.from + '<br>';
                     bodyHtml += 'Recipient: ' + data.to + '<br>';
+                    bodyHtml += 'Snap on start: ' + data.snaponstart + '<br>';
+                    bodyHtml += 'Sleep on complete: ' + data.sleeponcomplete + '<br>';
+                    bodyHtml += 'Period (sec): ' + data.period + '<br>';
                 }
 
                 if(data.serial_buf != "") {

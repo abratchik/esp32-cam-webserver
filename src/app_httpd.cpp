@@ -28,7 +28,7 @@ int CLAppHttpd::start() {
     
     loadPrefs();
 
-    server = new AsyncWebServer(AppConn.getPort());
+    server = new AsyncWebServer(AppConn.getHTTPPort());
     ws = new AsyncWebSocket("/ws");
     
     server->on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -339,17 +339,8 @@ void onControl(AsyncWebServerRequest *request) {
         request->send(200);
         if (AppCam.getLamp() != -1) AppCam.setLamp(0); // kill the lamp; otherwise it can remain on during the soft-reboot
         Storage.getFS().end();      // close file storage
-        esp_task_wdt_init(3,true);  // schedule a a watchdog panic event for 3 seconds in the future
-        esp_task_wdt_add(NULL);
-        periph_module_disable(PERIPH_I2C0_MODULE); // try to shut I2C down properly
-        periph_module_disable(PERIPH_I2C1_MODULE);
-        periph_module_reset(PERIPH_I2C0_MODULE);
-        periph_module_reset(PERIPH_I2C1_MODULE);
-        ESP_LOGI(AppHttpd.getTag(),"REBOOT requested");
-        while(true) {
-          delay(200);
-          Serial.print('.');
-        }
+        resetI2CBus();
+        scheduleReboot(3);
     }
     else if(variable == FPSTR(CONN_SSID)) {AppConn.setSSID(value.c_str());AppConn.setPassword("");}
     else if(variable == FPSTR(CONN_PASSWORD)) AppConn.setPassword(value.c_str());
@@ -411,10 +402,11 @@ void onControl(AsyncWebServerRequest *request) {
         AppCam.setFlashLamp(constrain(val,0,100));
     }
     else if(variable == FPSTR(CONN_LOAD_AS_AP)) AppConn.setLoadAsAP(val);
+    else if(variable == FPSTR(CONN_AP_TIMEOUT)) AppConn.setAPTimeout(val);
     else if(variable == FPSTR(CONN_AP_CHANNEL)) AppConn.setAPChannel(val);
     else if(variable == FPSTR(CONN_AP_DHCP)) AppConn.setAPDHCP(val);
     else if(variable == FPSTR(CONN_DHCP)) AppConn.setDHCPEnabled(val);
-    else if(variable == FPSTR(CONN_HTTP_PORT)) AppConn.setPort(val);
+    else if(variable == FPSTR(CONN_HTTP_PORT)) AppConn.setHTTPPort(val);
     else if(variable == FPSTR(CONN_OTA_ENABLED)) AppConn.setOTAEnabled(val);
     else if(variable == FPSTR(CONN_GMT_OFFSET)) AppConn.setGmtOffset_sec(val);
     else if(variable == FPSTR(CONN_DST_OFFSET)) AppConn.setDaylightOffset_sec(val);
@@ -515,6 +507,7 @@ void CLAppHttpd::dumpSystemStatusToJson(JsonObject jstr) {
     jstr[FPSTR(ESP_SDK_VERSION_PARAM)] = ESP.getSdkVersion();
 
     jstr[FPSTR(CONN_LOAD_AS_AP)] = AppConn.isAccessPoint();
+    jstr[FPSTR(CONN_AP_TIMEOUT)] = AppConn.getAPTimeout();
     jstr[FPSTR(CONN_CAPTIVE_PORTAL)] = AppConn.isCaptivePortal();
     jstr[FPSTR(CONN_AP_NAME)] = AppConn.getApName();
     jstr[FPSTR(CONN_SSID)] = AppConn.getSSID();
@@ -536,10 +529,10 @@ void CLAppHttpd::dumpSystemStatusToJson(JsonObject jstr) {
     jstr[FPSTR(CONN_AP_SUBNET)] = (AppConn.getAPIP()->netmask?AppConn.getAPIP()->netmask->toString().c_str():(char*)"");
 
     jstr[FPSTR(CONN_AP_CHANNEL)] = AppConn.getAPChannel();
-    jstr[FPSTR(CONN_AP_DHCP)] = AppConn.getAPDHCP();
+    jstr[FPSTR(CONN_AP_DHCP)] = AppConn.isAPDHCP();
 
     jstr[FPSTR(CONN_MDNS_NAME)] = AppConn.getMDNSname();
-    jstr[FPSTR(CONN_HTTP_PORT)] = AppConn.getPort();
+    jstr[FPSTR(CONN_HTTP_PORT)] = AppConn.getHTTPPort();
 
     jstr[FPSTR(CONN_USER)] = AppConn.getUser();
 
@@ -590,6 +583,9 @@ void CLAppHttpd::dumpSystemStatusToJson(JsonObject jstr) {
     jstr[FPSTR(MAIL_SMTP_PORT)] = AppMailSender.getSMTPPort();
     jstr[FPSTR(MAIL_FROM)] = AppMailSender.getFromEmail();
     jstr[FPSTR(MAIL_TO)] = AppMailSender.getToEmail();
+    jstr[FPSTR(MAIL_SNAPONSTART)] = AppMailSender.isSnapOnStart()?"On":"Off";
+    jstr[FPSTR(MAIL_SLEEPONCOMPLETE)] = AppMailSender.isSleepOnComplete()?"On":"Off";
+    jstr[FPSTR(MAIL_PERIOD)] = AppMailSender.getSecondsTillFire();
 #endif
 
 }

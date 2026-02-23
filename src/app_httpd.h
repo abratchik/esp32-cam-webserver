@@ -1,9 +1,7 @@
 #ifndef app_httpd_h
 #define app_httpd_h
 
-#include <esp_int_wdt.h>
 #include <esp_task_wdt.h>
-#include <freertos/timers.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 
@@ -13,6 +11,7 @@
 #include "app_conn.h"
 #include "app_cam.h"
 #include "app_pwm.h"
+#include "utils.h"
 
 #ifdef ENABLE_MAIL_FEATURE
 #include "app_mail.h"      // Mail client
