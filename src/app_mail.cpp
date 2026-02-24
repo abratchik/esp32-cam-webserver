@@ -72,29 +72,25 @@ void saveTimeToToken(JsonObject jctx, const __FlashStringHelper* token, time_t* 
     jctx[token] = strbuf;
 }
 
-int CLAppMailSender::loadPrefs() {
-    JsonDocument doc;
-    int ret  = parsePrefs(&doc);
-    if(ret != OK) {
-        return ret;
-    }
-    username = doc[FPSTR(MAIL_USERNAME)] | "";
-    password = doc[FPSTR(MAIL_PASSWORD)] | "";
-    smtp_server = doc[FPSTR(MAIL_SMTP_SERVER)] | "";
-    smtp_port = doc[FPSTR(MAIL_SMTP_PORT)] | 465;
-    from_email = doc[FPSTR(MAIL_FROM)] | "";
-    to_email = doc[FPSTR(MAIL_TO)] | "";
-    subject = doc[FPSTR(MAIL_SUBJECT)] | "";
-    message = doc[FPSTR(MAIL_MESSAGE)] | "";
-    html_message = doc[FPSTR(MAIL_HTML_MESSAGE)] | "";
-    snaponstart = doc[FPSTR(MAIL_SNAPONSTART)] | false;
-    sleeponcomplete = doc[FPSTR(MAIL_SLEEPONCOMPLETE)] | false;
-    period = doc[FPSTR(MAIL_PERIOD)] | TimePeriod::NONE;
-    num_periods = doc[FPSTR(MAIL_NUM_PERIODS)] | 0;
-    start_at = parseTimeFromToken(doc.as<JsonObject>(), FPSTR(MAIL_START_AT));
-    finish_at = parseTimeFromToken(doc.as<JsonObject>(), FPSTR(MAIL_FINISH_AT));
 
-    configured = doc[FPSTR(APP_CONFIGURED_PARAM)] | false;
+int CLAppMailSender::loadFromJson(JsonObject jctx, bool full_set) {
+    username = jctx[FPSTR(MAIL_USERNAME)] | "";
+    password = jctx[FPSTR(MAIL_PASSWORD)] | "";
+    smtp_server = jctx[FPSTR(MAIL_SMTP_SERVER)] | "";
+    smtp_port = jctx[FPSTR(MAIL_SMTP_PORT)] | 465;
+    from_email = jctx[FPSTR(MAIL_FROM)] | "";
+    to_email = jctx[FPSTR(MAIL_TO)] | "";
+    subject = jctx[FPSTR(MAIL_SUBJECT)] | "";
+    message = jctx[FPSTR(MAIL_MESSAGE)] | "";
+    html_message = jctx[FPSTR(MAIL_HTML_MESSAGE)] | "";
+    snaponstart = jctx[FPSTR(MAIL_SNAPONSTART)] | false;
+    sleeponcomplete = jctx[FPSTR(MAIL_SLEEPONCOMPLETE)] | false;
+    period = jctx[FPSTR(MAIL_PERIOD)] | TimePeriod::NONE;
+    num_periods = jctx[FPSTR(MAIL_NUM_PERIODS)] | 0;
+    start_at = parseTimeFromToken(jctx, FPSTR(MAIL_START_AT));
+    finish_at = parseTimeFromToken(jctx, FPSTR(MAIL_FINISH_AT));
+
+    configured = jctx[FPSTR(APP_CONFIGURED_PARAM)] | false;
 
     pendingsnap = configured && snaponstart;
     buffer_sent = false;
@@ -102,29 +98,28 @@ int CLAppMailSender::loadPrefs() {
     return configured?OK:FAIL;
 }
 
-int CLAppMailSender::savePrefs() {
-    JsonDocument doc;
-    JsonObject jstr = doc.to<JsonObject>();
 
-    jstr[FPSTR(MAIL_USERNAME)] = username;
-    jstr[FPSTR(MAIL_PASSWORD)] = password;
-    jstr[FPSTR(MAIL_SMTP_SERVER)] = smtp_server;
-    jstr[FPSTR(MAIL_SMTP_PORT)] = smtp_port;
-    jstr[FPSTR(MAIL_FROM)] = from_email;
-    jstr[FPSTR(MAIL_TO)] = to_email;
-    jstr[FPSTR(MAIL_SUBJECT)] = subject;
-    jstr[FPSTR(MAIL_MESSAGE)] = message;
-    jstr[FPSTR(MAIL_HTML_MESSAGE)] = html_message;
-    jstr[FPSTR(MAIL_SNAPONSTART)] = snaponstart;
-    jstr[FPSTR(MAIL_SLEEPONCOMPLETE)] = sleeponcomplete;
-    jstr[FPSTR(MAIL_PERIOD)] = period;
-    jstr[FPSTR(MAIL_NUM_PERIODS)] = num_periods;
-    saveTimeToToken(jstr, FPSTR(MAIL_START_AT), &start_at);
-    saveTimeToToken(jstr, FPSTR(MAIL_FINISH_AT), &finish_at);
+int CLAppMailSender::saveToJson(JsonObject jctx, bool full_set) {
+    jctx[FPSTR(MAIL_SMTP_SERVER)] = smtp_server;
+    jctx[FPSTR(MAIL_SMTP_PORT)] = smtp_port;
+    jctx[FPSTR(MAIL_FROM)] = from_email;
+    jctx[FPSTR(MAIL_TO)] = to_email;
+    jctx[FPSTR(MAIL_SUBJECT)] = subject;
+    jctx[FPSTR(MAIL_MESSAGE)] = message;
+    jctx[FPSTR(MAIL_HTML_MESSAGE)] = html_message;
+    jctx[FPSTR(MAIL_SNAPONSTART)] = snaponstart;
+    jctx[FPSTR(MAIL_SLEEPONCOMPLETE)] = sleeponcomplete;
+    jctx[FPSTR(MAIL_PERIOD)] = period;
+    jctx[FPSTR(MAIL_NUM_PERIODS)] = num_periods;
+    saveTimeToToken(jctx, FPSTR(MAIL_START_AT), &start_at);
+    saveTimeToToken(jctx, FPSTR(MAIL_FINISH_AT), &finish_at);
 
-    jstr[FPSTR(APP_CONFIGURED_PARAM)] = configured;
-
-    return savePrefsToFile(&doc);
+    if(!full_set) return OK;
+    
+    jctx[FPSTR(MAIL_USERNAME)] = username;
+    jctx[FPSTR(MAIL_PASSWORD)] = password;
+    jctx[FPSTR(APP_CONFIGURED_PARAM)] = configured;
+    return OK;
 }
 
 int IRAM_ATTR storeBufImgCallback(uint8_t* buffer, size_t size) {
@@ -140,13 +135,13 @@ int CLAppMailSender::mailImage() {
 
 uint32_t CLAppMailSender::getSecondsTillFire() {
     // if start date is in future, we need to sleep till that date
-    time_t current_time = time(nullptr);
+    time_t current_time = time(nullptr) + AppConn.getGmtOffset_sec(); 
     if(start_at > current_time) {
         return start_at - current_time;  
     }
 
     // if finish date is in past, we return 0 (no sleep!)
-    if(finish_at !=0 && finish_at < time(nullptr)) {
+    if(finish_at !=0 && finish_at < current_time) {
         return 0;
     }
 

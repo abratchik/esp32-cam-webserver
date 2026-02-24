@@ -42,6 +42,28 @@ int CLAppComponent::removePrefs() {
   return OK;
 }
 
+int CLAppComponent::loadPrefs() {
+    JsonDocument jdoc;
+    int ret  = parsePrefs(&jdoc);
+    if(ret != OK) {
+        return ret;
+    }
+ 
+    return loadFromJson(jdoc.as<JsonObject>());
+}
+
+int CLAppComponent::savePrefs(){
+    JsonDocument doc;
+
+    int res = saveToJson(doc.to<JsonObject>());
+
+    if(res!=OK) {
+        return res;
+    }
+
+    return savePrefsToFile(&doc);
+}
+
 int CLAppComponent::parsePrefs(JsonDocument *doc) {
   char *pref_file = getPrefsFileName(); 
 

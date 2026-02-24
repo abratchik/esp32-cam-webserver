@@ -24,8 +24,11 @@ class CLAppComponent {
     // Sketch Info
     
         virtual int start(){return OK;};
-        virtual int loadPrefs(){return OK;};
-        virtual int savePrefs(){return OK;};
+        virtual int loadPrefs();
+        virtual int savePrefs();
+
+        virtual int loadFromJson(JsonObject jctx, bool full_set = true) { return OK; };
+        virtual int saveToJson(JsonObject jctx, bool full_set = true) { return OK; };
         
         virtual void dumpPrefs();
         virtual int removePrefs();

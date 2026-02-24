@@ -141,7 +141,7 @@ void CLAppPWM::reset(uint8_t pin) {
     }
 }
 
-int CLAppPWM::loadPrefsFromJson(JsonObject jctx) {
+int CLAppPWM::loadFromJson(JsonObject jctx, bool full_set) {
 
     JsonArray jaPWM = jctx[FPSTR(PWM_TAG)].as<JsonArray>();
 
@@ -168,7 +168,7 @@ int CLAppPWM::loadPrefsFromJson(JsonObject jctx) {
 	return OK;
 }
 
-int CLAppPWM::savePrefsToJson(JsonObject jctx) {
+int CLAppPWM::saveToJson(JsonObject jctx, bool full_set) {
 	if(pwms.size() > 0) {
 
         JsonArray jaPWM = jctx[FPSTR(PWM_TAG)].to<JsonArray>();

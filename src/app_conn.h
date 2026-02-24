@@ -86,8 +86,9 @@ class CLAppConn : public CLAppComponent {
     public:
         CLAppConn();
 
-        int loadPrefs();
-        int savePrefs();
+        int loadFromJson(JsonObject jctx, bool full_set = true);
+        int saveToJson(JsonObject jctx, bool full_set = true);
+
         int start();
         bool stop() {return WiFi.disconnect();};
 

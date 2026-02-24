@@ -45,7 +45,7 @@ void saveNVS() {
 
 void recordError(uint8_t error) {
     if(boot_error != error || error == 0)
-        reboot_attempts == 0;
+        reboot_attempts = 0;
     else
         reboot_attempts++;
     boot_error = error;

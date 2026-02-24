@@ -190,15 +190,8 @@ void CLAppConn::calcURLs() {
 
 }
 
-int CLAppConn::loadPrefs() {
-    JsonDocument jdoc;
-    int ret  = parsePrefs(&jdoc);
-    if(ret != OK) {
-        return ret;
-    }
-
-    JsonObject jctx = jdoc.as<JsonObject>();
-    if(snprintf(mdnsName, sizeof(mdnsName), "%s", jctx[FPSTR(CONN_MDNS_NAME)] | "") == 0)
+int CLAppConn::loadFromJson(JsonObject jctx, bool full_set) {
+   if(snprintf(mdnsName, sizeof(mdnsName), "%s", jctx[FPSTR(CONN_MDNS_NAME)] | "") == 0)
         ESP_LOGW(tag,"MDNS Name is not defined!");
 
     snprintf(hostName, sizeof(hostName), "%s", jctx[FPSTR(CONN_HOST_NAME)] | "");
@@ -270,8 +263,7 @@ int CLAppConn::loadPrefs() {
 
     daylightOffset_sec = daylightOffset_sec ? daylightOffset_sec : 0;
 
-    // close the file
-    return ret;
+    return OK;
 }
 
 void CLAppConn::setStaticIP (IPAddress ** ip_address, const char * strval) {
@@ -288,11 +280,8 @@ void CLAppConn::readIPFromJSON (JsonObject context, IPAddress ** ip_address, con
     }
 }
 
-int CLAppConn::savePrefs() {
-
-    JsonDocument doc;
-    JsonObject jstr = doc.to<JsonObject>();
-    jstr[FPSTR(CONN_MDNS_NAME)] = mdnsName;
+int CLAppConn::saveToJson(JsonObject jctx, bool full_set) {
+    jctx[FPSTR(CONN_MDNS_NAME)] = mdnsName;
 
     int count = stationCount;
     int index = getSSIDIndex();
@@ -303,7 +292,7 @@ int CLAppConn::savePrefs() {
     char ebuf[254]; 
 
     if(index < 0 || count > 0) {
-        JsonArray stations = jstr[FPSTR(CONN_SSID_LIST)].to<JsonArray>();
+        JsonArray stations = jctx[FPSTR(CONN_SSID_LIST)].to<JsonArray>();
 
         // if(index < 0 && strcmp(ssid, "") != 0) {
         //     JsonObject station = stations.createNestedObject();
@@ -327,34 +316,33 @@ int CLAppConn::savePrefs() {
         }
     }
 
-    jstr[FPSTR(CONN_DHCP)] = dhcp;
-    if(staticIP.ip) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_IP)] = staticIP.ip->toString(); 
-    if(staticIP.netmask) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_NETMASK)] = staticIP.netmask->toString();
-    if(staticIP.gateway) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_GATEWAY)] = staticIP.gateway->toString();
-    if(staticIP.dns1) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_DNS1)] = staticIP.dns1->toString();
-    if(staticIP.dns2) jstr[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_DNS2)] = staticIP.dns2->toString();
+    jctx[FPSTR(CONN_DHCP)] = dhcp;
+    if(staticIP.ip) jctx[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_IP)] = staticIP.ip->toString(); 
+    if(staticIP.netmask) jctx[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_NETMASK)] = staticIP.netmask->toString();
+    if(staticIP.gateway) jctx[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_GATEWAY)] = staticIP.gateway->toString();
+    if(staticIP.dns1) jctx[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_DNS1)] = staticIP.dns1->toString();
+    if(staticIP.dns2) jctx[FPSTR(CONN_STATIC_IP)][FPSTR(CONN_DNS2)] = staticIP.dns2->toString();
 
-    jstr[FPSTR(CONN_HTTP_PORT)] = httpPort;
-    jstr[FPSTR(CONN_USER)] = user;
-    jstr[FPSTR(CONN_PWD)] = pwd;
-    jstr[FPSTR(CONN_OTA_ENABLED)] = otaEnabled;
+    jctx[FPSTR(CONN_HTTP_PORT)] = httpPort;
+    jctx[FPSTR(CONN_USER)] = user;
+    jctx[FPSTR(CONN_PWD)] = pwd;
+    jctx[FPSTR(CONN_OTA_ENABLED)] = otaEnabled;
     urlEncode(ebuf, otaPassword, sizeof(otaPassword));
-    jstr[FPSTR(CONN_OTA_PASSWORD)] = ebuf;
+    jctx[FPSTR(CONN_OTA_PASSWORD)] = ebuf;
 
-    jstr[FPSTR(CONN_LOAD_AS_AP)] = load_as_ap;
-    jstr[FPSTR(CONN_AP_TIMEOUT)] = ap_timeout;
-    jstr[FPSTR(CONN_AP_SSID)] = apName;
+    jctx[FPSTR(CONN_LOAD_AS_AP)] = load_as_ap;
+    jctx[FPSTR(CONN_AP_TIMEOUT)] = ap_timeout;
+    jctx[FPSTR(CONN_AP_SSID)] = apName;
     urlEncode(ebuf, apPass, sizeof(apPass));
-    jstr[FPSTR(CONN_AP_PASS)] = ebuf;
-    jstr[FPSTR(CONN_AP_DHCP)] = ap_dhcp;
-    if(apIP.ip) jstr[FPSTR(CONN_AP_IP)][FPSTR(CONN_IP)] = apIP.ip->toString(); 
-    if(apIP.netmask) jstr[FPSTR(CONN_AP_IP)][FPSTR(CONN_NETMASK)] = apIP.netmask->toString();
+    jctx[FPSTR(CONN_AP_PASS)] = ebuf;
+    jctx[FPSTR(CONN_AP_DHCP)] = ap_dhcp;
+    if(apIP.ip) jctx[FPSTR(CONN_AP_IP)][FPSTR(CONN_IP)] = apIP.ip->toString(); 
+    if(apIP.netmask) jctx[FPSTR(CONN_AP_IP)][FPSTR(CONN_NETMASK)] = apIP.netmask->toString();
 
-    jstr[FPSTR(CONN_NTP_SERVER)] = ntpServer;
-    jstr[FPSTR(CONN_GMT_OFFSET)] = gmtOffset_sec;
-    jstr[FPSTR(CONN_DST_OFFSET)] = daylightOffset_sec;
-
-    return savePrefsToFile(&doc);
+    jctx[FPSTR(CONN_NTP_SERVER)] = ntpServer;
+    jctx[FPSTR(CONN_GMT_OFFSET)] = gmtOffset_sec;
+    jctx[FPSTR(CONN_DST_OFFSET)] = daylightOffset_sec;
+    return OK;
 }
 
 void CLAppConn::startOTA() {

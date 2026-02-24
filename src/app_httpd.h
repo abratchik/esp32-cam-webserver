@@ -72,8 +72,9 @@ class CLAppHttpd : public CLAppComponent {
         CLAppHttpd();
 
         int start();
-        int loadPrefs();
-        int savePrefs();
+
+        int loadFromJson(JsonObject jctx, bool full_set = true);
+        int saveToJson(JsonObject jctx, bool full_set = true);
 
         void cleanupWsClients();
 

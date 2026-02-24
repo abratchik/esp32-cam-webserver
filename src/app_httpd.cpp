@@ -488,7 +488,7 @@ void CLAppHttpd::dumpCameraStatusToJson(JsonObject jstr, bool full_status) {
     jstr[FPSTR(ESP_TEMP_PARAM)] = getTemp();
     jstr[FPSTR(HTTPD_SERIAL_BUF)] = getSerialBuffer();  
 
-    AppCam.dumpStatusToJson(jstr, full_status);
+    AppCam.saveToJson(jstr, full_status);
 
     if(full_status) {
         jstr[FPSTR(APP_CODE_VERSION_PARAM)] = getVersion();
@@ -597,16 +597,11 @@ void CLAppHttpd::serialSendCommand(const char *cmd) {
 #endif
 }
 
-int CLAppHttpd::loadPrefs() {
-    JsonDocument doc;
-    int ret  = parsePrefs(&doc);
-    if(ret != OK) {
-        return ret;
-    }
-    
-    _max_streams = doc[FPSTR(HTTPD_MAX_STREAMS)] | 2;
 
-    JsonArray jaMapping = doc[FPSTR(HTTPD_MAPPING)].as<JsonArray>();
+int CLAppHttpd::loadFromJson(JsonObject jctx, bool full_set) {
+    _max_streams = jctx[FPSTR(HTTPD_MAX_STREAMS)] | 2;
+
+    JsonArray jaMapping = jctx[FPSTR(HTTPD_MAPPING)].as<JsonArray>();
 
     for(JsonObject joMap : jaMapping) {
         UriMapping *um = (UriMapping*) malloc(sizeof(UriMapping));
@@ -623,22 +618,19 @@ int CLAppHttpd::loadPrefs() {
         }
     }
 
-    snprintf(myName, sizeof(myName), "%s", doc["my_name"] | "ESP32Cam");
+    snprintf(myName, sizeof(myName), "%s", jctx["my_name"] | "ESP32Cam");
 
-    return ret;
+    return OK;
 }
 
-int CLAppHttpd::savePrefs() {
 
-    JsonDocument doc;
-    JsonObject jstr = doc.to<JsonObject>();
-    
-    jstr["my_name"] = myName;
+int CLAppHttpd::saveToJson(JsonObject jctx, bool full_set) {
+    jctx["my_name"] = myName;
 
-    jstr[FPSTR(HTTPD_MAX_STREAMS)] = _max_streams;
+    jctx[FPSTR(HTTPD_MAX_STREAMS)] = _max_streams;
 
     if(_mappingCount > 0) {
-        JsonArray jaMapping = jstr[FPSTR(HTTPD_MAPPING)].to<JsonArray>();
+        JsonArray jaMapping = jctx[FPSTR(HTTPD_MAPPING)].to<JsonArray>();
 
         for(int i=0; i < _mappingCount; i++) {
             JsonObject objMap = jaMapping.add<JsonObject>();
@@ -647,7 +639,7 @@ int CLAppHttpd::savePrefs() {
         }
     }
 
-    return savePrefsToFile(&doc);
+    return OK;
 }
 
 

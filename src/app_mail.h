@@ -4,6 +4,7 @@
 #include "app_defines.h"
 #include "app_component.h"
 #include "app_cam.h"
+#include "app_conn.h"
 #include "utils.h"
 
 #define ENABLE_SMTP
@@ -54,8 +55,8 @@ class CLAppMailSender : public CLAppComponent {
         int start();
         void process();
 
-        int loadPrefs();
-        int savePrefs();
+        int loadFromJson(JsonObject jctx, bool full_set = true);
+        int saveToJson(JsonObject jctx, bool full_set = true);
     
         int mailImage();
         int storeBufImg(uint8_t* buffer, size_t size);

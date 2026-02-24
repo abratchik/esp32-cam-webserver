@@ -66,8 +66,9 @@ class CLAppCam : public CLAppComponent {
 
         int start();
         int stop(); 
-        int loadPrefs();
-        int savePrefs();
+
+        int loadFromJson(JsonObject jstr, bool full_set = true);
+        int saveToJson(JsonObject jstr, bool full_set = true);
 
         int getSensorPID() {return (sensor?sensor->id.PID:0);};
         sensor_t * getSensor() {return sensor;};
@@ -85,8 +86,6 @@ class CLAppCam : public CLAppComponent {
         int IRAM_ATTR snapFrame(ProcessFrameCallback sendCallback);
 
         int snapStillImage(ProcessFrameCallback sendCallback);
-
-        void dumpStatusToJson(JsonObject jstr, bool full_status = true);
 
         void setAutoLamp(bool val) {_autoLamp = val;};
         bool isAutoLamp() { return _autoLamp;};   

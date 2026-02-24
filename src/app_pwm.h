@@ -95,8 +95,8 @@ class CLAppPWM : public CLAppComponent {
             setTag("pwm");
         };
 
-        int loadPrefsFromJson(JsonObject jctx);
-        int savePrefsToJson(JsonObject jctx);
+        int loadFromJson(JsonObject jctx, bool full_set = true);
+        int saveToJson(JsonObject jctx, bool full_set = true);
 
         ESP32PWM* get(uint8_t index) { if(index < pwms.size()) return pwms[index]; else return nullptr; };
 
