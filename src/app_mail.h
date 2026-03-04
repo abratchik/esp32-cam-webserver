@@ -75,8 +75,15 @@ class CLAppMailSender : public CLAppComponent {
 
         const char* getSMTPServer() {return smtp_server.c_str();};
         uint16_t getSMTPPort() {return smtp_port;};
-        const char* getToEmail() {return to_email.c_str();};
-        const char* getFromEmail() {return from_email.c_str();};
+        const char* getTo() {return to_email.c_str();};
+        const char* getFrom() {return from_email.c_str();};
+        const char* getUser() {return username.c_str();};
+        uint8_t getPeriod() {return period;};
+        uint16_t getNumPeriods() {return num_periods;};
+
+
+        void saveStartAtToJson(JsonObject jctx);
+        void saveFinishAtToJson(JsonObject jctx);
 
         bool isSnapOnStart() { return snaponstart; };
         bool isPendingSnap() {return pendingsnap;};
@@ -87,6 +94,20 @@ class CLAppMailSender : public CLAppComponent {
         // returns number of seconds till schedule event. 0 means period is NONE or 
         // finish time is in past.
         uint32_t getSecondsTillFire();
+
+        void setSMTPServer(const char* server) {smtp_server = server; };
+        void setSMTPPort(uint16_t port) {smtp_port = port; };
+        void setFrom(const char* email) {from_email = email;};
+        void setTo(const char* email) {to_email = email;};
+        void setSnapOnStart(bool val) {snaponstart = val;};
+        void setSleepOnComplete(bool val) {sleeponcomplete = val;};
+        void setUser(const char* user) {username = user;}
+        void setPwd(const char* pwd) {password = pwd;}
+        void setPeriod(uint8_t p) { period = (TimePeriod)p;};
+        void setNumPeriods(uint16_t np) {num_periods = np;};
+
+        void setStartAt(const String& stime);
+        void setFinishAt(const String& stime);
 
     protected:
         void sendMail();

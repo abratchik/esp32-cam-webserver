@@ -25,9 +25,11 @@
                 <label for="nav-toggle-cb" id="nav-toggle" style="float:left;">&#9776;&nbsp;&nbsp;Setup&nbsp;&nbsp;&nbsp;&nbsp;</label>
                 <button id="camera" style="float:left;" title="Open camera view">Camera</button>
                 <button id="monitor" style="float:left;" title="Monitor system parameters">Dump</button>
+                <div id="wait-settings" style="float:left;" class="loader" title="Waiting for settings to load"></div>
                 <br>
             </div>
             <div id="content">
+                <input type="checkbox" id="view-mode" checked="checked" class="hidden">
                 <div id="sidebar">
                     <input type="checkbox" id="nav-toggle-cb" checked="checked">
                         <nav id="menu"></nav>
@@ -40,13 +42,50 @@
     <script>
         document.addEventListener('DOMContentLoaded', function (event) {
             var baseHost = document.location.origin;
-
+            
             const header = document.getElementById('logo');
+            const waitSettings = document.getElementById('wait-settings');
             const settings = document.getElementById('sidebar');
 
             const cameraButton = document.getElementById('camera');
             const monitorButton = document.getElementById('monitor');
 
+            const viewMode = document.getElementById("view-mode");
+
+            const toggleViewMode = () => {
+                const swapButton = document.getElementById('swap-viewer');
+                if(viewMode.checked) {
+                    swapButton.innerHTML = 'More <i class="fa fa-caret-down"></i>';
+                }
+                else {
+                    swapButton.innerHTML = 'Less <i class="fa fa-caret-up"></i>';
+                }
+
+                toggleMenuVisible(false);
+
+                document
+                    .querySelectorAll('.input-group')
+                    .forEach(el => {
+                    var simple = el.getAttribute("data-simple");
+                    // if input group not simple, hide or show it, depending on the view mode (checked = simple)
+                    if(simple != "true") 
+                        showhideone(el, viewMode.checked, "_simple");
+
+                    });
+
+                toggleMenuVisible(true);
+            };
+
+            const toggleMenuVisible = (mode) => {
+                if(mode) {
+                    hide(waitSettings);
+                    show(settings);
+                }
+                else {
+                    show(waitSettings);
+                    hide(settings);
+                }
+            };
 
             const addActions = (parent) => {
                 var div_group = document.createElement("div"); 
@@ -55,9 +94,10 @@
                 div_group.setAttribute("id", "actions-group");
                 div_group.setAttribute("data-simple", "true");
 
-                div_group.appendChild(createButton("save_prefs", "Save", "Save network settings", "true", "conn"));
-                div_group.appendChild(createButton("reset_prefs", "Reset", "Reset network settings", "true", "conn"));
+                div_group.appendChild(createButton("save_prefs", "Save", "Save settings", "true", "conn"));
+                div_group.appendChild(createButton("reset_prefs", "Reset", "Reset settings", "true", "conn"));
                 div_group.appendChild(createButton("reboot", "Reboot", "Reboot the server", "true"));
+                div_group.appendChild(createButton("swap-viewer", "More","Show more controls"));
 
                 parent.appendChild(div_group);
             };
@@ -69,6 +109,7 @@
             })
             .then(function (state) {
                 document.title = state['cam_name'] + ' Setup'
+
                 var menu = document.getElementById("menu")
                 addFormFields(menu, networkFormFields, selectOptions);
                 addActions(menu);
@@ -80,14 +121,21 @@
                         refreshControl(el);
                     });
 
+                toggleViewMode();
+
                 // Attach default on change action
                 document
                     .querySelectorAll('.default-action')
                     .forEach(el => {
-                        if(el.type == "submit")
+                        if(el.type == "submit") 
                             el.onclick = () => {
                                 if(submitChanges(el)) {
-                                    if(el.id == "reboot") {
+                                    if(el.id == "swap-viewer") {
+                                        var value = viewMode.checked ? 1 : 0;
+                                        viewMode.checked = !value;
+                                        toggleViewMode();
+                                    }
+                                    else if(el.id == "reboot") {
                                         hide(settings);
                                         header.innerHTML = '<h1>Rebooting!</h1><hr>Page will reload after 30 seconds.';
                                     }
@@ -105,6 +153,8 @@
                             el.onchange = () => submitChanges(el);
                         }    
                     });
+
+                toggleViewMode();
 
                 cameraButton.onclick = () => {
                     window.location.href = '/camera';

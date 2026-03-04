@@ -305,10 +305,16 @@ void onControl(AsyncWebServerRequest *request) {
         return;
     }    
     else if(variable ==  "save_prefs") {
-        if(value == "conn") 
+        if(value == "conn") {
             res = AppConn.savePrefs();
-        else if(value == "cam") 
+        #ifdef ENABLE_MAIL_FEATURE
+            res += AppMailSender.savePrefs();
+        #endif
+        
+        }
+        else if(value == "cam") {
             res = AppCam.savePrefs() + AppHttpd.savePrefs(); 
+        }
         else {
             request->send(400);
             return;
@@ -410,6 +416,20 @@ void onControl(AsyncWebServerRequest *request) {
     else if(variable == FPSTR(CONN_OTA_ENABLED)) AppConn.setOTAEnabled(val);
     else if(variable == FPSTR(CONN_GMT_OFFSET)) AppConn.setGmtOffset_sec(val);
     else if(variable == FPSTR(CONN_DST_OFFSET)) AppConn.setDaylightOffset_sec(val);
+#ifdef ENABLE_MAIL_FEATURE
+    else if(variable == FPSTR(MAIL_SMTP_SERVER)) AppMailSender.setSMTPServer(value.c_str());
+    else if(variable == FPSTR(MAIL_SMTP_PORT)) AppMailSender.setSMTPPort(val);
+    else if(variable == FPSTR(MAIL_FROM)) AppMailSender.setFrom(value.c_str());
+    else if(variable == FPSTR(MAIL_TO)) AppMailSender.setFrom(value.c_str());
+    else if(variable == FPSTR(MAIL_SNAPONSTART)) AppMailSender.setSnapOnStart(val);
+    else if(variable == FPSTR(MAIL_SLEEPONCOMPLETE)) AppMailSender.setSleepOnComplete(val);
+    else if(variable == FPSTR(MAIL_USERNAME)) AppMailSender.setUser(value.c_str());
+    else if(variable == FPSTR(MAIL_PASSWORD)) AppMailSender.setPwd(value.c_str());
+    else if(variable == FPSTR(MAIL_PERIOD)) AppMailSender.setPeriod(val);
+    else if(variable == FPSTR(MAIL_NUM_PERIODS)) AppMailSender.setNumPeriods(val);
+    else if(variable == FPSTR(MAIL_START_AT)) AppMailSender.setStartAt(value);
+    else if(variable == FPSTR(MAIL_FINISH_AT)) AppMailSender.setFinishAt(value);
+#endif
     else {
         res = -1;
     }
@@ -581,11 +601,15 @@ void CLAppHttpd::dumpSystemStatusToJson(JsonObject jstr) {
 #ifdef ENABLE_MAIL_FEATURE
     jstr[FPSTR(MAIL_SMTP_SERVER)] = AppMailSender.getSMTPServer();
     jstr[FPSTR(MAIL_SMTP_PORT)] = AppMailSender.getSMTPPort();
-    jstr[FPSTR(MAIL_FROM)] = AppMailSender.getFromEmail();
-    jstr[FPSTR(MAIL_TO)] = AppMailSender.getToEmail();
-    jstr[FPSTR(MAIL_SNAPONSTART)] = AppMailSender.isSnapOnStart()?"On":"Off";
-    jstr[FPSTR(MAIL_SLEEPONCOMPLETE)] = AppMailSender.isSleepOnComplete()?"On":"Off";
-    jstr[FPSTR(MAIL_PERIOD)] = AppMailSender.getSecondsTillFire();
+    jstr[FPSTR(MAIL_FROM)] = AppMailSender.getFrom();
+    jstr[FPSTR(MAIL_TO)] = AppMailSender.getTo();
+    jstr[FPSTR(MAIL_SNAPONSTART)] = AppMailSender.isSnapOnStart();
+    jstr[FPSTR(MAIL_SLEEPONCOMPLETE)] = AppMailSender.isSleepOnComplete();
+    jstr[FPSTR(MAIL_PERIOD)] = AppMailSender.getPeriod();
+    jstr[FPSTR(MAIL_NUM_PERIODS)] = AppMailSender.getNumPeriods();
+    jstr[FPSTR(MAIL_USERNAME)] = AppMailSender.getUser();
+    AppMailSender.saveStartAtToJson(jstr);
+    AppMailSender.saveFinishAtToJson(jstr);
 #endif
 
 }

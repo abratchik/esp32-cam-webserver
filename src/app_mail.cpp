@@ -50,14 +50,18 @@ int CLAppMailSender::start() {
     return OK;
 }
 
-time_t parseTimeFromToken(JsonObject jctx, const __FlashStringHelper* token) {
-    String stime = jctx[token];
+time_t parseTimeFromString(const String& stime) {
     if(stime.isEmpty() || stime == "") return (time_t)0;
     struct tm tm_time = {0};
     if(strptime(stime.c_str(), APP_DATETIME_FORMAT, &tm_time) != NULL) {
         return mktime(&tm_time);
     }
     return (time_t)0;
+}
+
+time_t parseTimeFromToken(JsonObject jctx, const __FlashStringHelper* token) {
+    String stime = jctx[token];
+    return parseTimeFromString(stime);
 }
 
 void timeToStr(char* strbuf, size_t size, time_t* t_value) {
@@ -70,6 +74,28 @@ void saveTimeToToken(JsonObject jctx, const __FlashStringHelper* token, time_t* 
     char strbuf[20];
     timeToStr(strbuf, sizeof(strbuf), t_value);
     jctx[token] = strbuf;
+}
+
+void CLAppMailSender::saveStartAtToJson(JsonObject jctx) {
+    if(start_at) 
+        saveTimeToToken(jctx, FPSTR(MAIL_START_AT), &start_at);
+    else 
+        jctx[FPSTR(MAIL_START_AT)] = "";
+}
+
+void CLAppMailSender::saveFinishAtToJson(JsonObject jctx) {
+    if(finish_at)
+        saveTimeToToken(jctx, FPSTR(MAIL_FINISH_AT), &finish_at);
+    else 
+        jctx[FPSTR(MAIL_FINISH_AT)] = "";
+}
+
+void CLAppMailSender::setStartAt(const String& stime) {
+    start_at = parseTimeFromString(stime);
+}
+
+void CLAppMailSender::setFinishAt(const String& stime) {
+    finish_at = parseTimeFromString(stime);
 }
 
 
@@ -111,8 +137,8 @@ int CLAppMailSender::saveToJson(JsonObject jctx, bool full_set) {
     jctx[FPSTR(MAIL_SLEEPONCOMPLETE)] = sleeponcomplete;
     jctx[FPSTR(MAIL_PERIOD)] = period;
     jctx[FPSTR(MAIL_NUM_PERIODS)] = num_periods;
-    saveTimeToToken(jctx, FPSTR(MAIL_START_AT), &start_at);
-    saveTimeToToken(jctx, FPSTR(MAIL_FINISH_AT), &finish_at);
+    saveStartAtToJson(jctx);
+    saveFinishAtToJson(jctx);
 
     if(!full_set) return OK;
     
