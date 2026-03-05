@@ -1,6 +1,6 @@
 {
-    "username": "someone@somewhere.com",
-    "password": "some_password",
+    "smtp_user": "someone@somewhere.com",
+    "smtp_pass": "some_password",
     "smtp_server": "smtp.somewhere.com",
     "smtp_port": 465,
     "from_email": "From <from@somewhere.com>",
@@ -13,6 +13,5 @@
     "period": 0,
     "num_periods": 0,
     "start": "",
-    "finish": "",
-    "configured": false
+    "finish": ""
 }

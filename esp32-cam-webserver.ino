@@ -201,6 +201,11 @@ void loop() {
                 AppConn.configNTP();
                 Serial.print("Time: ");
                 AppConn.printLocalTime(true);
+            #ifdef ENABLE_MAIL_FEATURE
+                if(AppConn.isNTPSyncDone() && !AppMailSender.isConfigured()) {
+                    AppMailSender.loadPrefs();
+                }
+            #endif
             }
 
             // loop here to process events
@@ -210,7 +215,8 @@ void loop() {
                 handleSerial();
             #ifdef ENABLE_MAIL_FEATURE
                 // snap image if camera is ready and mail it if configured  
-                if(AppMailSender.isPendingSnap() && AppCam.getLastErr() == 0 && AppConn.isNTPSyncDone()) {
+                if(AppMailSender.isPendingSnap() && AppCam.getLastErr() == 0 && 
+                   AppMailSender.isConfigured()) {
                     if(AppMailSender.mailImage() != OK) {
                         // if mailImage fails it means something wrong with the camera, need reboot
                         recordError(CAMERA_FAILURE);
@@ -252,7 +258,7 @@ void handleSerial() {
                 if(!AppCam.getLastErr() && 
                     AppConn.wifiStatus() == WL_CONNECTED && 
                    !AppConn.isAccessPoint() && 
-                    AppConn.isNTPSyncDone()) {
+                    AppMailSender.isConfigured()) {
 
                     if(AppMailSender.mailImage() != OK) {
                         ESP_LOGE(TAG, "Failure to make a snapshot, check camera");
@@ -280,6 +286,7 @@ void notifyConnect() {
 void notifyDisconnect() {
     AppHttpd.serialSendCommand("Disconnected");
 }
+
 
 
 

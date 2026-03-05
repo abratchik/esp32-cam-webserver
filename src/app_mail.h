@@ -27,8 +27,8 @@
 
 using MailSharedBuffer = std::shared_ptr<std::vector<uint8_t>>;
 
-const char MAIL_USERNAME[] PROGMEM = "username";
-const char MAIL_PASSWORD[] PROGMEM = "password";
+const char MAIL_USERNAME[] PROGMEM = "smtp_user";
+const char MAIL_PASSWORD[] PROGMEM = "smtp_pass";
 const char MAIL_SMTP_SERVER[] PROGMEM = "smtp_server";
 const char MAIL_SMTP_PORT[] PROGMEM = "smtp_port";
 const char MAIL_FROM[] PROGMEM = "from";
@@ -89,7 +89,7 @@ class CLAppMailSender : public CLAppComponent {
         bool isPendingSnap() {return pendingsnap;};
         bool isSleepOnComplete() { return sleeponcomplete;};
 
-        void setPendingSnap() {pendingsnap = configured;};
+        void setPendingSnap() {pendingsnap = isConfigured();};
 
         // returns number of seconds till schedule event. 0 means period is NONE or 
         // finish time is in past.

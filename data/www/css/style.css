@@ -107,10 +107,11 @@ section#buttons {
   margin: 5px 0
 }
 
-.input-group>label {
+.input-group>label,
+.input-group>.readonly-label {
   display: inline-block;
   padding-right: 10px;
-  min-width: 45%
+  min-width: 43%;
 }
 
 .input-group input,.input-group select {

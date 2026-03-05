@@ -67,9 +67,9 @@ int CLAppComponent::savePrefs(){
 int CLAppComponent::parsePrefs(JsonDocument *doc) {
   char *pref_file = getPrefsFileName(); 
 
-  String pref_json;
+  File pref_json = Storage.open(pref_file);
 
-  if(Storage.readFileToString(pref_file, &pref_json) != OK) {
+  if(!pref_json) {
       ESP_LOGE(tag, "Failed to open settings from %s", pref_file);
       return FAIL;
   }

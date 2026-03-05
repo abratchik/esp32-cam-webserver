@@ -74,8 +74,16 @@ const createInputGroup = (field) => {
 
 const createLabelFor = (field) => {
     var lbl = document.createElement("label");
+
+    if(field.control != "readonly") {
+      var lbl = document.createElement("label");
+      lbl.setAttribute("for", field.id);
+    }
+    else {
+      var lbl = document.createElement("div");
+      lbl.classList.add("readonly-label");
+    }
     lbl.innerHTML = field.name;
-    lbl.setAttribute("for", field.id);
     return lbl
 };
 

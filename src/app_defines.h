@@ -11,8 +11,6 @@ const char APP_SKETCH_MD5_PARAM[] PROGMEM = "sketch_md5";
 
 const char APP_DATETIME_FORMAT[] = "%Y-%m-%d %H:%M:%S";
 
-const char APP_CONFIGURED_PARAM[] PROGMEM = "configured";
-
 const char ESP_SDK_VERSION_PARAM[] PROGMEM = "esp_sdk";
 const char ESP_TEMP_PARAM[] PROGMEM = "esp_temp";
 const char ESP_CPU_FREQ_PARAM[] PROGMEM = "cpu_freq";

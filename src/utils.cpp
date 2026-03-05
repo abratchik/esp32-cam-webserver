@@ -17,6 +17,7 @@ void parseBytes(const char* str, char sep, byte* bytes, int maxBytes, int base) 
 
 void hibernate(uint32_t seconds_till_wakeup) {
     esp_sleep_enable_timer_wakeup(uS_TO_S_FACTOR * seconds_till_wakeup);
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_15, LOW);
     esp_deep_sleep_disable_rom_logging();
     esp_deep_sleep_start();
 }

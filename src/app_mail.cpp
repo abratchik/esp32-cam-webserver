@@ -27,10 +27,6 @@ void onlineTimerCallback(void* arg) {
 }
 
 int CLAppMailSender::start() {
-    int ret = loadPrefs();
-    if(ret != OK) {
-        return ret;
-    }
 
     ssl_client = new WiFiClientSecure();
 
@@ -81,6 +77,7 @@ void CLAppMailSender::saveStartAtToJson(JsonObject jctx) {
         saveTimeToToken(jctx, FPSTR(MAIL_START_AT), &start_at);
     else 
         jctx[FPSTR(MAIL_START_AT)] = "";
+    ESP_LOGD(tag, "Save start time: %s", jctx[FPSTR(MAIL_START_AT)].as<const char*>());
 }
 
 void CLAppMailSender::saveFinishAtToJson(JsonObject jctx) {
@@ -88,6 +85,7 @@ void CLAppMailSender::saveFinishAtToJson(JsonObject jctx) {
         saveTimeToToken(jctx, FPSTR(MAIL_FINISH_AT), &finish_at);
     else 
         jctx[FPSTR(MAIL_FINISH_AT)] = "";
+    ESP_LOGD(tag, "Save finish time: %s", jctx[FPSTR(MAIL_FINISH_AT)].as<const char*>());
 }
 
 void CLAppMailSender::setStartAt(const String& stime) {
@@ -110,18 +108,18 @@ int CLAppMailSender::loadFromJson(JsonObject jctx, bool full_set) {
     message = jctx[FPSTR(MAIL_MESSAGE)] | "";
     html_message = jctx[FPSTR(MAIL_HTML_MESSAGE)] | "";
     snaponstart = jctx[FPSTR(MAIL_SNAPONSTART)] | false;
-    sleeponcomplete = jctx[FPSTR(MAIL_SLEEPONCOMPLETE)] | false;
+    sleeponcomplete = (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0)?
+                      false: jctx[FPSTR(MAIL_SLEEPONCOMPLETE)] | false;
+                      
     period = jctx[FPSTR(MAIL_PERIOD)] | TimePeriod::NONE;
     num_periods = jctx[FPSTR(MAIL_NUM_PERIODS)] | 0;
-    start_at = parseTimeFromToken(jctx, FPSTR(MAIL_START_AT));
-    finish_at = parseTimeFromToken(jctx, FPSTR(MAIL_FINISH_AT));
+    setStartAt(jctx[FPSTR(MAIL_START_AT)].as<String>());
+    setFinishAt(jctx[FPSTR(MAIL_FINISH_AT)].as<String>());
 
-    configured = jctx[FPSTR(APP_CONFIGURED_PARAM)] | false;
-
-    pendingsnap = configured && snaponstart;
+    pendingsnap = isConfigured() && snaponstart;
     buffer_sent = false;
 
-    return configured?OK:FAIL;
+    return isConfigured()?OK:FAIL;
 }
 
 
@@ -144,7 +142,7 @@ int CLAppMailSender::saveToJson(JsonObject jctx, bool full_set) {
     
     jctx[FPSTR(MAIL_USERNAME)] = username;
     jctx[FPSTR(MAIL_PASSWORD)] = password;
-    jctx[FPSTR(APP_CONFIGURED_PARAM)] = configured;
+
     return OK;
 }
 
@@ -161,7 +159,7 @@ int CLAppMailSender::mailImage() {
 
 uint32_t CLAppMailSender::getSecondsTillFire() {
     // if start date is in future, we need to sleep till that date
-    time_t current_time = time(nullptr) + AppConn.getGmtOffset_sec(); 
+    time_t current_time = time(nullptr); 
     if(start_at > current_time) {
         return start_at - current_time;  
     }

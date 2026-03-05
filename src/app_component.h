@@ -46,8 +46,6 @@ class CLAppComponent {
         const char * tag;   
         const char * prefix;
 
-        bool configured = false;
-
         void setTag(const char *t) {tag = t;};
         void setPrefix(const char *p) {prefix = p;};
 
@@ -65,6 +63,9 @@ class CLAppComponent {
 
         // error code of the last error
         int last_err = 0;
+        
+        // true if the component config exists and parsed successfully 
+        bool configured = false;
 
         char prefs[TAG_LENGTH] = "prefs.json";
 };
