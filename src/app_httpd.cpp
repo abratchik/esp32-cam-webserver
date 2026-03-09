@@ -420,7 +420,7 @@ void onControl(AsyncWebServerRequest *request) {
     else if(variable == FPSTR(MAIL_SMTP_SERVER)) AppMailSender.setSMTPServer(value.c_str());
     else if(variable == FPSTR(MAIL_SMTP_PORT)) AppMailSender.setSMTPPort(val);
     else if(variable == FPSTR(MAIL_FROM)) AppMailSender.setFrom(value.c_str());
-    else if(variable == FPSTR(MAIL_TO)) AppMailSender.setFrom(value.c_str());
+    else if(variable == FPSTR(MAIL_TO)) AppMailSender.setTo(value.c_str());
     else if(variable == FPSTR(MAIL_SNAPONSTART)) AppMailSender.setSnapOnStart(val);
     else if(variable == FPSTR(MAIL_SLEEPONCOMPLETE)) AppMailSender.setSleepOnComplete(val);
     else if(variable == FPSTR(MAIL_USERNAME)) AppMailSender.setUser(value.c_str());
